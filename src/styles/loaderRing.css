@@ -1,0 +1,32 @@
+.loading-ring{
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 10px solid #46778c;
+    position: relative;
+}
+
+.loading-ring .spinner{
+    position: absolute;
+    top: 0px;
+    transform: translate(-10px, -10px);
+    left: 0px;
+    width: calc(100% + 20px);
+    height: calc(100% + 20px);
+    border-radius: 50%;
+    border: 10px solid #335462;
+    border-left: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    animation: spinner 2.5s  infinite linear;
+}
+
+@keyframes spinner {
+    0%{
+        transform: translate(-10px, -10px)
+        rotate(0deg);
+    }
+    100%{
+        transform: translate(-10px, -10px)
+        rotate(360deg);
+    }
+}

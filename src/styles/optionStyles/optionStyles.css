@@ -1,0 +1,29 @@
+.options-container{
+    width: 100vw;
+    min-height: 100vh;
+    height: auto;
+    background: #406e81;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.options-container h1.logo{
+    color: #95c1d4;
+    width: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60px;
+    background: #406e81;
+}
+
+header{
+    width: 100vw;
+    height: 60px;
+    background: #406e81;
+    position: fixed;
+    top: 0px;
+    left: 0px;
+}
