@@ -12,7 +12,5 @@ const client = {
 
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-    <AblyProvider client={client}>
-        <App />
-    </AblyProvider>
+    <App />
 )

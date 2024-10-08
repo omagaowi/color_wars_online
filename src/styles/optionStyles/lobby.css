@@ -87,7 +87,7 @@
 .lobby-player.waiting h3{
     text-align: center;
     color: #335462;
-    margin-top: 10px;
+    margin-top: 25px;
 }
 
 .lobby-player.waiting p{
@@ -97,6 +97,10 @@
 
 
 /* 1 player lobby grid */
+
+.lobby-grid.player0mode{
+    opacity: 0;
+}
 
 .lobby-grid.player1mode .lobby-player:nth-child(1) {
     grid-row: 1 / 3;
@@ -163,6 +167,7 @@
   background: #4e839a;
   border: none;
   outline: none;
+  position: relative;
   color: #73bbd9;
   transition: all .3s;
     margin: 0px 7px;
@@ -172,12 +177,50 @@
     background: #31515f;
 }
 
+.error-dialog{
+    width: 90vw;
+    max-width: 350px;
+    height: 220px;
+    background: #4e839a;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-dialog svg{
+    width: 80px;
+    height: 80px;
+}
+
+.error-dialog svg,
+.error-dialog h2,
+.error-dialog p{
+    color: #2a4956;
+}
+
+.error-dialog button{
+    width: 70px;
+    height: 30px;
+    margin-top: 10px;
+    background: #73bbd9;
+    border: none;
+    outline: none;
+    color: #2a4956;
+    cursor: pointer;
+    
+}
 
 @media screen and (max-width: 630px) {
     .lobby-grid{
         grid-template-columns: repeat(1, minmax(400px, 1fr));
         grid-template-rows: repeat(4, minmax(200px, 1fr));
         margin-bottom: 0px;
+    }
+
+    .lobby-grid.player0mode{
+        opacity: 0;
     }
 
     .lobby-actions{
@@ -210,5 +253,51 @@
     .lobby-grid.player3mode{
         grid-template-rows: repeat(3, minmax(250px, 1fr));
         margin-top: 80px;
+    }
+}
+
+.loading-ring.lobby-loader{
+    width: 90px;
+    height: 90px;
+    position: relative;
+    top: 20px;
+}
+
+.loading-ring.lobby-loader .spinner{
+    position: absolute;
+    top: 0px;
+    transform: translate(-10px, -10px);
+    left: 0px;
+}
+
+
+.loading-ring.start-btn-loader{
+    width: 30px;
+    height: 30px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border: 4px solid #46778c;
+    transform: translate(-50%, -50%);
+}
+
+.loading-ring.start-btn-loader .spinner{
+    border: 4px solid #335462;
+    border-left: 4px solid transparent;
+    width: calc(100% + 6px);
+    height: calc(100% + 6px);
+    transform: translate(-2px, -4.5px);
+    border-bottom: 4px solid transparent;
+    animation: lobbySpinner 2.5s  infinite linear;
+}
+
+@keyframes lobbySpinner {
+    0%{
+        transform: translate(-3px, -3px)
+        rotate(0deg);
+    }
+    100%{
+        transform: translate(-3px, -3px)
+        rotate(360deg);
     }
 }

@@ -1,0 +1,39 @@
+.server-wait-container{
+    width: 100vw;
+    height: 100vh;
+    /* background: #406e81; */
+    /* background: #25414d; */
+    display: flex;
+    flex-direction: column;
+    /* color: #25414d; */
+    align-items: center;
+    animation: animate 20s infinite linear;
+    justify-content: center;
+}
+
+.server-wait-container h1{
+    font-size: 50px;
+    font-weight: 300;
+    /* color: #25414d; */
+    /* color: #5b9dba; */
+}
+
+.server-wait-container p{
+    /* color: #25414d; */
+    /* color: #5b9dba; */
+}
+
+@keyframes animate {
+    0%{
+        background: #406e81;
+        color: #25414d;
+    }
+    50%{
+         background: #25414d;
+          color: #5b9dba;
+    }
+    100%{
+        background: #406e81;
+        color: #25414d;
+    }
+}

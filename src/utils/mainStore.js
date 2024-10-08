@@ -1,5 +1,7 @@
 import { create } from 'zustand' 
 
+const root =  'http://localhost:4000'
+
 const useMenuStore = create((set) => ({
     mode: false,
     setMode: (data) => set((state) => ({ mode: data })),
@@ -19,4 +21,10 @@ const useEliminatedStore = create((set) => ({
 }));
 
 
-export { useMenuStore, useGridStore, useEliminatedStore }
+const useChannelStore = create((set) => ({
+  channel: false,
+  setChannel: (data) => set((state) => ({ channel: data})),
+}));
+
+
+export { useMenuStore, useGridStore, useEliminatedStore, root, useChannelStore }

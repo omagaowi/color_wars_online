@@ -17,18 +17,24 @@ const Options1 = () => {
         setBoxes: state.setBoxes
     }))
 
+    const fetchGrid = async () => {
+        try {
+            const response = await fetch('/boxes.json')
+            const data = await response.json()
+            return data
+        } catch (error) {
+            return error
+        }
+    }
+
     useEffect(() => {
-        let freshBoxesGrid = []
-        boxesGrid.forEach((box) => {
-            const newBox = {
-                row: box.row,
-                column: box.column,
-                circles: 0,
-                player: []
-            }
-            freshBoxesGrid.push(newBox)
+        setBoxes([])
+        fetchGrid().then(((data) => {
+            setBoxes(data.boxes)
+        })).catch((err) => {
+            console.log(err)
         })
-        setBoxes(freshBoxesGrid)
+        // setBoxes(freshBoxesGrid)
     }, [])
 
 
@@ -36,7 +42,7 @@ const Options1 = () => {
         <div className="options-container options1">
             <Header />
             <div className="options-pick">
-                <div className="option online" onClick={() => {
+                <div className="option online" style={{ opacity: .6, pointerEvents: 'none' }} onClick={() => {
                     setMode('online')
                     navigate('/joinroom')
                 }}>

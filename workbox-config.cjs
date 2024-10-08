@@ -7,7 +7,7 @@ module.exports = {
   runtimeCaching: [
     {
       urlPattern: ({ url }) => url.pathname === "/options/8537",
-      handler: "NetworkFirst",
+      handler: "CacheFirst",
       options: {
         cacheName: "mainmenu",
         expiration: {
@@ -17,9 +17,29 @@ module.exports = {
     },
     {
       urlPattern: ({ url }) => url.pathname === "/options/offline/4898",
-      handler: "NetworkFirst",
+      handler: "CacheFirst",
       options: {
         cacheName: "offlinemenu",
+        expiration: {
+          maxEntries: 50,
+        },
+      },
+    },
+    {
+      urlPattern: ({ url }) => url.pathname === "/offline/game/4980",
+      handler: "CacheFirst",
+      options: {
+        cacheName: "game",
+        expiration: {
+          maxEntries: 50,
+        },
+      },
+    },
+    {
+      urlPattern: ({ url }) => url.pathname === "/offline/game/6058",
+      handler: "CacheFirst",
+      options: {
+        cacheName: "game2v2",
         expiration: {
           maxEntries: 50,
         },

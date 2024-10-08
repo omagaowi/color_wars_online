@@ -44,6 +44,9 @@
     color: #95c1d4;
     margin-top: 20px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: .3s ease;
     border-radius: 5px;
 }
