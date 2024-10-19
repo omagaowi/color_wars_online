@@ -26,6 +26,10 @@ const useAuthStore = create((set) => ({
     updateisAdmin: (data) => set((state) => ({
         isAdmin: data
     })),
+    lobbyLoading: true,
+    setLobbyLoading: (data) => set((state) => ({
+        lobbyLoading: data
+    })),
 }))
 
 export { useAuthStore, rootURI }

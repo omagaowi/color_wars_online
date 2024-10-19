@@ -18,7 +18,7 @@ const Lobby = () => {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(false)
 
-    const { userData, updateUserData, currentRoom, currentRoomPlayers, updateCurrentRoomPlayers, updateCurrentRoom, clientSocket, isAdmin, updateisAdmin } = useAuthStore((state) => ({
+    const { userData, updateUserData, currentRoom, currentRoomPlayers, updateCurrentRoomPlayers, updateCurrentRoom, clientSocket, isAdmin, updateisAdmin, lobbyLoading, setLobbyLoading } = useAuthStore((state) => ({
         userData: state.userData,
         updateUserData: state.updateUserData,
         currentRoom: state.currentRoom,
@@ -27,7 +27,9 @@ const Lobby = () => {
         updateCurrentRoomPlayers: state.updateCurrentRoomPlayers,
         clientSocket: state.clientSocket,
         isAdmin: state.isAdmin,
-        updateisAdmin: state.updateisAdmin
+        updateisAdmin: state.updateisAdmin,
+        lobbyLoading: state.lobbyLoading,
+        setLobbyLoading: state.setLobbyLoading
     }))
 
     const { show, alert, setShow, setAlert, timeout, updateTimeout } = alertStore((state) => ({
@@ -54,6 +56,16 @@ const Lobby = () => {
     const [startLoading, setStartLoading] = useState(false)
     const [gameStarted, setGameStarted] = useState(false)
 
+    const fetchGrid = async () => {
+        try {
+            const response = await fetch('/boxes.json')
+            const data = await response.json()
+            return data
+        } catch (error) {
+            return error
+        }
+    }
+
     const joinRoom = async () => {
         try{
             await clientSocket.emit('joinroom', userData)
@@ -64,128 +76,120 @@ const Lobby = () => {
     }
 
     const socketListening = () => {
-        clientSocket.on('users', (data) => {
-            const dummyPlayers = data.room.users.filter(function(player){
-                return player.status == 'online'
-            }).map((player, index) => ({
-                ...player,
-                playerColor: colors[index],
-                me: userData.userID == player.userID? true : false,
-                admin: index == 0? true : false
-            }))
-            updateCurrentRoomPlayers(dummyPlayers)
-            if(data.user.userID === userData.userID){
-               setLoading(prev => false)
-               updateUserData({...data.user, status: 'online'})
-               updateCurrentRoom(data.room)
-               setShow(false)
-               clearTimeout(timeout)
-                updateTimeout( setTimeout(() => {
-                    setAlert({
-                        type: data.action,
-                        users: [ data.user ],
-                        message: `you ${data.action}!`,
-                          color: data.action == 'joined'? 'green' : 'red'
-                    })
-                    setTimeout(() => {
-                        setShow(true)
-                    }, 200)
-                }, 100))
-            }else{
-                setShow(false)
-                clearTimeout(timeout)
-                updateTimeout(
-                    setTimeout(() => {
-                        setAlert({
-                            type: data.action,
-                            users: [ data.user ],
-                            message: `${data.user.name } ${data.action}!`,
-                            color: data.action == 'joined'? 'green' : 'red'
-                        })
-                        setTimeout(() => {
-                            setShow(true)
-                        }, 200)
-                    }, 100)
-                )
-            }
-        })
+        // clientSocket.on('users', (data) => {
+        //     console.log('user')
+        //     const dummyPlayers = data.room.users.filter(function(player){
+        //         return player.status == 'online'
+        //     }).map((player, index) => ({
+        //         ...player,
+        //         playerColor: colors[index],
+        //         me: userData.userID == player.userID? true : false,
+        //         admin: index == 0? true : false
+        //     }))
+        //     console.log(dummyPlayers)
+        //     updateCurrentRoomPlayers(dummyPlayers)
+        //     if(data.user.userID === userData.userID){
+        //        setLoading(prev => false)
+        //        updateUserData({...data.user, status: 'online'})
+        //        updateCurrentRoom(data.room)
+        //        setShow(false)
+        //        clearTimeout(timeout)
+        //         updateTimeout( setTimeout(() => {
+        //             setAlert({
+        //                 type: data.action == 'joined'? 'success' : 'error',
+        //                 users: [ data.user ],
+        //                 message: `you ${data.action}!`,
+        //                   color: data.action == 'joined'? 'green' : 'red'
+        //             })
+        //             setTimeout(() => {
+        //                 setShow(true)
+        //             }, 200)
+        //         }, 100))
+        //     }else{
+        //         setShow(false)
+        //         clearTimeout(timeout)
+        //         updateTimeout(
+        //             setTimeout(() => {
+        //                 setAlert({
+        //                     type: data.action == 'joined'? 'success' : 'error',
+        //                     users: [ data.user ],
+        //                     message: `${data.user.name } ${data.action}!`,
+        //                     color: data.action == 'joined'? 'green' : 'red'
+        //                 })
+        //                 setTimeout(() => {
+        //                     setShow(true)
+        //                 }, 200)
+        //             }, 100)
+        //         )
+        //     }
+        // })
         clientSocket.on('joinerror', (data)=> {
             setJoinError(prev => data)
             setLoading(prev => false)
             // console.log(data)
         })
+        clientSocket.on('startgame', (data)=>{
+            setStartLoading(prev => false)
+            setGameStarted(prev => true)
+            clearTimeout(timeout)
+            console.log(data)
+            // console.log(data)
+            updateGameData(data)
+            updateCurrentRoom(data)
+            updateCurrentRoomPlayers(data.users)
+            setBoxes(data.gameInfo.playBoxes)
+            navigate(`/online/game/${data.roomID}`)
+            updateTimeout(setTimeout(() => {
+                setAlert({
+                    type: 'success',
+                    users: [ data.player ],
+                    message: `the game has started`,
+                    color: 'green'
+                })
+                setTimeout(() => {
+                    setShow(true)
+                }, 200)
+            }, 100))
+        })    
     }
 
 
-    const startGame = async () => {
+    const startGame = async (boxes) => {
         setStartLoading(prev => true)
         setGameStarted(prev => true)
         try {
-            if(currentRoomPlayers.length >= 2){
                 await clientSocket.emit('startgame', {
                     room: currentRoom,
                     player: userData,
+                    players: currentRoomPlayers,
                     gameInfo: {
-                        playOrder: generateGrid(currentRoomPlayers.length).order,
-                        playGrid: generateGrid(currentRoomPlayers.length).rows,
-                        playBoxes: generateGrid(currentRoomPlayers.length).boxes
+                        playOrder: generateGrid(currentRoomPlayers.length, false, boxes).order,
+                        playGrid: generateGrid(currentRoomPlayers.length, false, boxes).rows,
+                        playBoxes: generateGrid(currentRoomPlayers.length, false, boxes).boxes
                     }
                 })
                 return true
-            }
         } catch (error) {
+            console.log(error)
            throw error
         }
     }
 
-    clientSocket.on('startgame', (data)=>{
-        setStartLoading(prev => false)
-        setGameStarted(prev => true)
-        clearTimeout(timeout)
-        // console.log(data)
-        updateGameData(data)
-        setBoxes(data.gameInfo.playBoxes)
-        navigate(`/online/game/${data.room.roomID}`)
-        updateTimeout(setTimeout(() => {
-            setAlert({
-                type: 'gamestart',
-                users: [ data.player ],
-                message: `the game has started`,
-                color: 'green'
-            })
-            setTimeout(() => {
-                setShow(true)
-            }, 200)
-        }, 100))
-    })
-   
 
-    useEffect(() => {
-        const findAdmin = currentRoomPlayers.filter(function(el){
-            return el.admin == true
-        })[0]
-        console.log(findAdmin)
-        if(findAdmin){
-            if(findAdmin.userID == userData.userID){
-                updateisAdmin(true)
-            }else{
-                updateisAdmin(false)
-            }
-        }
-    }, [currentRoomPlayers])
 
     useEffect(() => {
         setLoading(prev => true)
         if(clientSocket){
             const urlID = window.location.href.split('/')[5]
+            console.log(userData, urlID)
             if(urlID == userData.roomID){
                 joinRoom().then(() => {
                     socketListening()
                 }).catch((err) => {
-                    
+                    console.log(err)
                 })
             }else{
-                
+                console.log('wee')
             }
         }else{
             
@@ -194,10 +198,9 @@ const Lobby = () => {
 
     return (
         <div className="options-container lobby">
-             <Error error={ error } setError={ setError }/>
             <Header />
             {
-                loading? (
+                lobbyLoading? (
                     <LoaderRing customClass={ 'lobby-loader' }/>
                 ):(
                     <>
@@ -252,17 +255,55 @@ const Lobby = () => {
                                             isAdmin? (
                                                 <>
                                                     <button onClick={ () => {
-                                                        startGame().then(() => {
-                                                            clientSocket.on('startgameError', ()=>{
-                                                                setGameStarted(prev => false)
-                                                                setStartLoading(prev => false)
-                                                                setError('An Error Occured!')
+                                                        if(currentRoomPlayers.length >= 2){
+                                                            fetchGrid().then((data) => {
+                                                                startGame(data.boxes).then(() => {
+                                                                    clientSocket.on('startgameError', ()=>{
+                                                                        setGameStarted(prev => false)
+                                                                        setStartLoading(prev => false)
+                                                                        updateTimeout(setTimeout(() => {
+                                                                            setAlert({
+                                                                                type: 'error',
+                                                                                users: [  ],
+                                                                                message: `An error occured!`,
+                                                                                color: 'red'
+                                                                            })
+                                                                            setTimeout(() => {
+                                                                                setShow(true)
+                                                                            }, 200)
+                                                                        }, 100))
+                                                                    })
+                                                                }).catch(err => {
+                                                                    setGameStarted(prev => false)
+                                                                    setStartLoading(prev => false)
+                                                                    updateTimeout(setTimeout(() => {
+                                                                        setAlert({
+                                                                            type: 'error',
+                                                                            users: [  ],
+                                                                            message: `An error occured!`,
+                                                                            color: 'red'
+                                                                        })
+                                                                        setTimeout(() => {
+                                                                            setShow(true)
+                                                                        }, 200)
+                                                                    }, 100))
+                                                                })
+                                                            }).catch((err) => {
+
                                                             })
-                                                        }).catch(err => {
-                                                            setGameStarted(prev => false)
-                                                            setStartLoading(prev => false)
-                                                            setError('An Error Occured!')
-                                                        })
+                                                        }else{
+                                                            updateTimeout(setTimeout(() => {
+                                                                setAlert({
+                                                                    type: 'error',
+                                                                    users: [],
+                                                                    message: `a game requires two players or more!`,
+                                                                    color: 'red'
+                                                                })
+                                                                setTimeout(() => {
+                                                                    setShow(true)
+                                                                }, 200)
+                                                            }, 100))
+                                                        }
                                                     } } style={ { pointerEvents: gameStarted? 'none' : 'all' } }>{
                                                         startLoading? (
                                                             <LoaderRing customClass = { 'start-btn-loader' }/>

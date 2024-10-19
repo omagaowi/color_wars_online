@@ -5,6 +5,8 @@ import { boxClick } from '../pages/Game/OffilineGame.jsx'
 import { boxClick2v2 } from '../pages/Game/OfflineGame2v2.jsx'
 
 import { boxClickOnline } from '../pages/Game/OnlineGame.jsx'
+import LoaderRing from './LoaderRing.jsx'
+import { gameDataStore } from '../utils/online/otherStores.jsx'
 
 const Box = ({ gridRef, grid, columnIndex, rowIndex, boxes }) => {
     const { playerCount, mode } = useMenuStore((state) => ({ 
@@ -12,7 +14,14 @@ const Box = ({ gridRef, grid, columnIndex, rowIndex, boxes }) => {
         mode: state.mode
     }))  
 
+    const { playLoading } =  gameDataStore((state) => ({
+        playLoading: state.playLoading
+    }))
+
     // console.log(mode)
+    console.log(playLoading)
+
+    // const playLoading = true
 
     const thisBox = boxes.filter(function(el){ return el.row == rowIndex && el.column == columnIndex })[0]
     // console.log(playerCount, mode)
@@ -31,10 +40,18 @@ const Box = ({ gridRef, grid, columnIndex, rowIndex, boxes }) => {
             }
             } } >
              <div className={ `circle circle${thisBox.circles}` }>
-                <div className="dots"></div>
-                <div className="dots"></div>
-                <div className="dots"></div>
-                <div className="dots"></div>
+                {
+                    playLoading? (
+                        <LoaderRing customClass={ 'play-loader' } color = { thisBox.player[0] }/>
+                    ):(
+                        <>
+                            <div className="dots"></div>
+                            <div className="dots"></div>
+                            <div className="dots"></div>
+                            <div className="dots"></div>
+                        </>
+                    )
+                }
             </div>
         </div>
     )

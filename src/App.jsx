@@ -15,25 +15,66 @@ import OnlineForm from './pages/Options/OptionsOnlineForm.jsx'
 import io from 'socket.io-client';
 import ServerWait from './pages/Options/Server.jsx'
 import { rootURI, useAuthStore } from './utils/online/authStore.jsx'
-import { alertStore } from './utils/online/otherStores.jsx'
+import { alertStore, gameDataStore, colors } from './utils/online/otherStores.jsx'
 import Alerts from './components/Alerts.jsx'
+import { playLogic, timeOutLogic } from './pages/Game/OnlineGame.jsx'
 import OnlineGame from './pages/Game/OnlineGame.jsx'
+import Cookies from 'js-cookie'
+
+
 
 
 function App() {
 
-  const { clientSocket, updateClientSocket } = useAuthStore((state) => ({
+ 
+  const { userData, updateUserData, currentRoom, currentRoomPlayers, updateCurrentRoomPlayers, updateCurrentRoom, clientSocket, isAdmin, updateisAdmin, lobbyLoading, setLobbyLoading } = useAuthStore((state) => ({
+    userData: state.userData,
+    updateUserData: state.updateUserData,
+    currentRoom: state.currentRoom,
+    updateCurrentRoom: state.updateCurrentRoom,
+    currentRoomPlayers: state.currentRoomPlayers,
+    updateCurrentRoomPlayers: state.updateCurrentRoomPlayers,
     clientSocket: state.clientSocket,
-    updateClientSocket: state.updateClientSocket
-  }))
-
-  const { show, alert, setShow, setAlert } = alertStore((state) => ({
-    alert: state.alert,
-    show: state.show,
-    setShow: state.setShow,
-    setAlert: state.setAlert
+    isAdmin: state.isAdmin,
+    updateisAdmin: state.updateisAdmin,
+    lobbyLoading: state.lobbyLoading,
+    setLobbyLoading: state.setLobbyLoading
 }))
 
+const { gameData, updateGameData } = gameDataStore((state) => ({
+  gameData: state.gameData,
+  updateGameData: state.updateGameData,
+}))
+
+
+
+const { show, alert, setShow, setAlert, timeout, updateTimeout } = alertStore((state) => ({
+  alert: state.alert,
+  show: state.show,
+  setShow: state.setShow,
+  setAlert: state.setAlert,
+  timeout: state.timeout,
+  updateTimeout: state.updateTimeout
+}))
+
+
+ const { setPlayLoading } = gameDataStore((state) => ({
+  setPlayLoading: state.setPlayLoading
+}))
+
+
+  useEffect(() => {
+    const findAdmin = currentRoomPlayers.filter(function(el){
+        return el.admin == true
+    })[0]
+    if(findAdmin){
+        if(findAdmin.userID == userData.userID){
+            updateisAdmin(true)
+        }else{
+            updateisAdmin(false)
+        }
+    }
+  }, [currentRoomPlayers])
 
   useEffect(() => {
     // Establish socket connection
@@ -43,12 +84,86 @@ function App() {
       // newSocket.on('disconnect', () => {
       //   console.log('you have been disconnected')
       // })
-    
-    return () => {
-      if(clientSocket){
-        // clientSocket.close()  
+
+      clientSocket.on('play', (data) => {
+          playLogic(data.box)
+          setPlayLoading(false)
+      })
+
+      const userPresenceAlerts = (data) => {
+        if(data.user.userID == JSON.parse(Cookies.get('userData')).userID){
+          updateUserData({...data.user, status: 'online'})
+          updateCurrentRoom(data.room)
+          setShow(false)
+          clearTimeout(timeout)
+           updateTimeout( setTimeout(() => {
+               setAlert({
+                   type: data.action == 'joined'? 'success' : 'error',
+                   users: [ data.user ],
+                   message: `you ${data.action}!`,
+                     color: data.action == 'joined'? 'green' : 'red'
+               })
+               setTimeout(() => {
+                   setShow(true)
+               }, 200)
+           }, 100))
+       }else{
+           setShow(false)
+           clearTimeout(timeout)
+           updateTimeout(
+               setTimeout(() => {
+                   setAlert({
+                       type: data.action == 'joined'? 'success' : 'error',
+                       users: [ data.user ],
+                       message: `${data.user.name } ${data.action}!`,
+                       color: data.action == 'joined'? 'green' : 'red'
+                   })
+                   setTimeout(() => {
+                       setShow(true)
+                   }, 200)
+               }, 100)
+           )
+       }
       }
-    };
+
+
+      clientSocket.on('users', (data)=>{
+        const urlSplit = window.location.href.split('/')
+        if(urlSplit[4] == 'lobby'){ 
+          setLobbyLoading(false)
+          const dummyPlayers = data.room.users.filter(function(player){
+            return player.status == 'online'
+          }).map((player, index) => ({
+              ...player,
+              playerColor: colors[index],
+              me: userData.userID == player.userID? true : false,
+              admin: index == 0? true : false
+          }))
+          updateCurrentRoomPlayers(dummyPlayers)
+          userPresenceAlerts(data)
+        }else if(urlSplit[3] == 'online' && urlSplit[4] == 'game'){
+          console.log(data)
+          updateCurrentRoom(data.room)
+          updateCurrentRoomPlayers(data.room.users)
+          // updateGameData({...gameData, users: data.room.users })
+          userPresenceAlerts(data)
+        }
+      })
+
+      clientSocket.on('timeout', (data) => {
+          timeOutLogic(data)
+      })
+
+      clientSocket.on('disconnectTimeout', ()=>{
+        
+      })
+
+      return () => {
+        clientSocket.off('play')
+        clientSocket.off('timeout')
+    }
+    
+  
   }, []);
 
 

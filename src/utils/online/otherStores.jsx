@@ -45,6 +45,10 @@ const gameDataStore = create((set) => ({
    updateGameData: (data) => set((state) => ({
         gameData: data
    })),
+   playLoading: false,
+   setPlayLoading: (data) => set((state) => ({
+        playLoading: data
+    })),
    boxes: [],
    setBoxes: (data) => set((state) => ({ boxes: data })),
    playerCount: false,

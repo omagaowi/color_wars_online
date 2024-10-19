@@ -4,6 +4,7 @@ import { useMenuStore, useEliminatedStore, useGridStore } from "../../utils/main
 import Loader from "../../components/Loader.jsx"
 import Grid from "../../components/GridArea.jsx"
 import Results from "../../components/Results.jsx"
+import GameError from "../../components/GameError.jsx"
 
 let boxClick2v2
 let turnInterval = false
@@ -24,7 +25,6 @@ const OfflineGame2v2 = () => {
         setBoxes: state.setBoxes
     }))
 
-    console.log(playerCount)
 
     const [playOrder, setPlayOrder] = useState(false)
     const [showLoader, setShowLoader] = useState(true)
@@ -270,8 +270,6 @@ const OfflineGame2v2 = () => {
 
             // console.log(passEliminated2v2(eliminated))
 
-    
-            console.log(checkPlayerScore(playOrder[playTurn].player))
 
             if(checkPlayerScore(playOrder[playTurn].player) == 0 && checkGroupEliminated(playOrder[playTurn].player, playOrder[playTurn].partner)){
               setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
@@ -291,10 +289,10 @@ const OfflineGame2v2 = () => {
 
     useEffect(() => {
         if(playerCount){
-            setPlayOrder(prev => generateGrid(playerCount.count, playerCount.tVt).order)
+            setPlayOrder(prev => generateGrid(playerCount.count, playerCount.tVt, boxes).order)
             setPlayTurn(0)
-            setGrid(generateGrid(playerCount.count).rows)
-            setBoxes(generateGrid(playerCount.count).boxes)
+            setGrid(generateGrid(playerCount.count, false, boxes).rows)
+            setBoxes(generateGrid(playerCount.count, false, boxes).boxes)
         }
     }, [])  
 
@@ -318,7 +316,7 @@ const OfflineGame2v2 = () => {
                                   }
                               </>
                           ):(
-                              <></>
+                              <GameError />
                           )
                         }
                   </div>
@@ -331,7 +329,7 @@ const OfflineGame2v2 = () => {
                   }
                 </>
           ):(
-            <></>
+            <GameError />
           )
         }
        </>

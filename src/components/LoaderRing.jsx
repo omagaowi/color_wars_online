@@ -1,8 +1,8 @@
 import '../styles/loaderRing.css'
 
-const LoaderRing = ( { customClass }) => {
+const LoaderRing = ( { customClass, color }) => {
     return (
-        <div className={`loading-ring ${customClass}`}>
+        <div className={`loading-ring ${customClass} ${color}`}>
             <div className="spinner"></div>
         </div>
     )

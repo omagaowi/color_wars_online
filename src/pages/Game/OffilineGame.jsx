@@ -8,6 +8,7 @@ import { generateGrid } from '../../utils/generateGrid.js'
 import { useMenuStore, useGridStore, useEliminatedStore } from '../../utils/mainStore.js'
 import Results from '../../components/Results.jsx'
 import GameError from '../../components/GameError.jsx'
+import GameHeading from '../../components/GameHeading.jsx'
 
 let boxClick
 
@@ -46,6 +47,8 @@ const OfflineGame = () => {
     const [playTurn, setPlayTurn] = useState(0)
     const [hasPlayed, setHasPlayed] = useState(false)
     const [gameEnded, setGameEnded] = useState(false)
+    const [timer, setTimer] = useState(0)
+    let time
 
     // console.log(playOrder, grid)
 
@@ -182,7 +185,25 @@ const OfflineGame = () => {
     }
 
 
-    // console.log(eliminated)
+
+    // const gameTimer = setInterval(() => {
+    //   setTimer(prev => prev += 1)
+    //   clearInterval(gameTimer)
+    // }, 1000)
+
+    // console.log(timer)
+
+    useEffect(() => {
+      if(timer < 15){
+        time = setTimeout(() => setTimer(prev => prev += 0.2), 200)
+        if(hasPlayed){
+          clearTimeout(time)
+        }
+        return () => clearTimeout(time)
+      }
+    },[timer])
+
+
 
     boxClick = (thisBox) => {
         if(!hasPlayed){
@@ -221,7 +242,6 @@ const OfflineGame = () => {
     // console.log(eliminated)
 
     useEffect(() => {
-
         sessionStorage.removeItem('lastPlay')
         setHasPlayed(prev => false)
         if(turnInterval){
@@ -241,6 +261,9 @@ const OfflineGame = () => {
           }
         }
 
+        if(showLoader == false){
+          setTimer(prev => 0)
+        }
 
         if(checkPlayerScore(playOrder[playTurn]) == 0 && checkInitialPlays(playOrder[playTurn])){
           setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
@@ -258,11 +281,17 @@ const OfflineGame = () => {
     }, [playTurn])
 
     useEffect(() => {
+      if(showLoader == false){
+        setTimer(prev => 0)
+      }
+    }, [showLoader])
+
+    useEffect(() => {
         if(playerCount){
-          setPlayOrder(generateGrid(playerCount.count).order)
-          setGrid(generateGrid(playerCount.count).rows)
+          setPlayOrder(generateGrid(playerCount.count, false, boxes).order)
+          setGrid(generateGrid(playerCount.count, false, boxes).rows)
           // console.log(generateGrid(playerCount.count).boxes)
-          setBoxes(generateGrid(playerCount.count).boxes)
+          setBoxes(generateGrid(playerCount.count, false, boxes).boxes)
         }
     }, [])  
 
@@ -272,6 +301,7 @@ const OfflineGame = () => {
           playerCount? (
               <>
                 <div className={ `game-container ${ playOrder[playTurn] }` } style={ { position: gameEnded? 'fixed': 'relative' } }>
+                {/* <GameHeading color = { playOrder[playTurn] } players = { [] } timer = { timer }/> */}
                     <Grid playTurn = { playTurn } playOrder = { playOrder } hasPlayed = { hasPlayed } initialPlays = { initialPlays }
                     grid = { grid }/>
                     { 
@@ -291,6 +321,7 @@ const OfflineGame = () => {
                 }
               </>
           ):(
+            // <>{ timer }</>
             <GameError />
           )
         }

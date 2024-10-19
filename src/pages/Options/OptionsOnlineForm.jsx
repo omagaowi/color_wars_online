@@ -5,6 +5,7 @@ import { root } from '../../utils/mainStore.js'
 import Error from '../../components/Error.jsx'
 import LoaderRing from '../../components/LoaderRing.jsx'
 import Cookies from 'js-cookie';
+import { alertStore } from '../../utils/online/otherStores.jsx'
 
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../utils/online/authStore.jsx'
@@ -13,6 +14,14 @@ const OnlineForm = () => {
 
     const { updateUserData } = useAuthStore((state) => ({
         updateUserData: state.updateUserData
+    }))
+
+    
+    const {setShow, setAlert, timeout, updateTimeout } = alertStore((state) => ({
+        setShow: state.setShow,
+        setAlert: state.setAlert,
+        timeout: state.timeout,
+        updateTimeout: state.updateTimeout
     }))
 
     const [showRoom, setShowRoom] = useState(false)
@@ -33,6 +42,15 @@ const OnlineForm = () => {
         const [roomID, setRoomId] = useState(false)
         const roomIdRef = useRef(false)
 
+        const setUserData = async (user) => {
+            try {
+                await updateUserData(user)
+                return true
+            } catch (error) {
+                throw error
+            }
+        }
+
         const createRoom = (e) => {
             e.preventDefault()
             const url = `${root}/createroom`
@@ -41,6 +59,7 @@ const OnlineForm = () => {
             const headers = {
                 'Content-Type': 'application/json'
             }
+
 
             fetch(url, {
                 method: 'POST',
@@ -58,14 +77,37 @@ const OnlineForm = () => {
                         roomID: e.target.roomID.value
                     }
                     setCookie('userData', JSON.stringify(user))
-                    updateUserData(user)
-                    navigate(`/game/lobby/${e.target.roomID.value}`)
+                    setUserData(user).then(() => {
+                        navigate(`/game/lobby/${e.target.roomID.value}`)
+                    }).catch((error) => {
+                        console.log(error)
+                    })
                 }else{
-                    setError(prev => 'Error creating room!')
+                    updateTimeout(setTimeout(() => {
+                        setAlert({
+                            type: 'error',
+                            users: [  ],
+                            message: `Error creating room!`,
+                            color: 'red'
+                        })
+                        setTimeout(() => {
+                            setShow(true)
+                        }, 200)
+                    }, 100))
                 }
             }).catch(err => {
                 setLoading(prev => false)
-                setError(prev => 'An error occured, check your connection')
+                updateTimeout(setTimeout(() => {
+                    setAlert({
+                        type: 'error',
+                        users: [  ],
+                        message: `An error occured, check your connection!`,
+                        color: 'red'
+                    })
+                    setTimeout(() => {
+                        setShow(true)
+                    }, 200)
+                }, 100))
             })
         }
 
@@ -97,15 +139,45 @@ const OnlineForm = () => {
                         updateUserData(user)
                         navigate(`/game/lobby/${e.target.roomID.value}`)
                     }else{
-                        setError(prev => createRoomError)
+                        updateTimeout(setTimeout(() => {
+                            setAlert({
+                                type: 'error',
+                                users: [  ],
+                                message: createRoomError,
+                                color: 'red'
+                            })
+                            setTimeout(() => {
+                                setShow(true)
+                            }, 200)
+                        }, 100))
                     }
                 }).catch(err => {
                     setLoading(prev => false)
-                    setError(prev => 'An error occured, check your connection')
+                    updateTimeout(setTimeout(() => {
+                        setAlert({
+                            type: 'error',
+                            users: [  ],
+                            message: `An error occured, check your connection!`,
+                            color: 'red'
+                        })
+                        setTimeout(() => {
+                            setShow(true)
+                        }, 200)
+                    }, 100))
                 })
             }else{
                 setLoading(prev => false)
-                setError(prev => 'Enter a valid room id !!')
+                updateTimeout(setTimeout(() => {
+                    setAlert({
+                        type: 'error',
+                        users: [  ],
+                        message: `Enter a valid room ID!`,
+                        color: 'red'
+                    })
+                    setTimeout(() => {
+                        setShow(true)
+                    }, 200)
+                }, 100))
             }
             
         }
@@ -138,7 +210,7 @@ const OnlineForm = () => {
                         </svg>
                     </div>
                 </div>
-                <button>
+                <button style={{ pointerEvents: loading? 'none' : 'all' }}>
                     <>
                         {
                             loading? (
@@ -169,7 +241,18 @@ const OnlineForm = () => {
             if(player_name != ''){
                 setName(prev => player_name)
             }else{
-                setError(prev => 'Enter name!!')
+                updateTimeout(setTimeout(() => {
+                    setAlert({
+                        type: 'error',
+                        users: [  ],
+                        message: `Enter a valid name!`,
+                        color: 'red'
+                    })
+                    setTimeout(() => {
+                        setShow(true)
+                    }, 200)
+                }, 100))
+                // setError(prev => 'Enter name!!')
             }
         }
 

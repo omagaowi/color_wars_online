@@ -4,7 +4,7 @@ import shuffleArray from "./arrayShuffle.js";
 
 
 
-const generateGrid = (player_count, twoVtwo) => {
+const generateGrid = (player_count, twoVtwo, boxes) => {
   // console.log(boxesGrid)
   // console.log(shuffleArray(["blue", "red", "green", "yellow"]));
   let rows = [];
@@ -21,7 +21,7 @@ const generateGrid = (player_count, twoVtwo) => {
         localStorage.setItem("2playerOrder", JSON.stringify(twoPlayerOrder));
       }
       rows = [false, false, false, false, false];
-      const boxesArray25 = boxesGrid.filter(function (el) {
+      const boxesArray25 = boxes.filter(function (el) {
         return el.row < 6 && el.column < 6;
       });
       return {
@@ -31,7 +31,7 @@ const generateGrid = (player_count, twoVtwo) => {
       };
     case 3:
       rows = [false, false, false, false, false, false];
-      const boxesArray36 = boxesGrid.filter(function (el) {
+      const boxesArray36 = boxes.filter(function (el) {
         return el.row < 7 && el.column < 7;
       });
       return {
@@ -43,7 +43,7 @@ const generateGrid = (player_count, twoVtwo) => {
       rows = [false, false, false, false, false, false, false, false];
       return {
         rows: rows,
-        boxes: boxesGrid,
+        boxes: boxes,
         order: shuffleArray(["blue", "red", "green", "yellow"], twoVtwo),
       };
   }
