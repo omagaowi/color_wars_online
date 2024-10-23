@@ -13,7 +13,7 @@ export default defineConfig({
       },
       manifest: {
         name: "Color Wars (Alpha)",
-        short_name: "ColorWars",
+        short_name: "ColorWars (Alpha)",
         start_url: "/",
         display: "standalone",
         background_color: "#7b00a1",

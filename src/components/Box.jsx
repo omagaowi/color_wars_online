@@ -19,7 +19,7 @@ const Box = ({ gridRef, grid, columnIndex, rowIndex, boxes }) => {
     }))
 
     // console.log(mode)
-    console.log(playLoading)
+    // console.log(playLoading)
 
     // const playLoading = true
 

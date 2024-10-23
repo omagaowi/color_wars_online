@@ -289,17 +289,18 @@ const OfflineGame2v2 = () => {
 
     useEffect(() => {
         if(playerCount){
-            setPlayOrder(prev => generateGrid(playerCount.count, playerCount.tVt, boxes).order)
+          const lsBoxes = JSON.parse(localStorage.getItem('boxes'))
+            setPlayOrder(prev => generateGrid(playerCount.count, playerCount.tVt, lsBoxes).order)
             setPlayTurn(0)
-            setGrid(generateGrid(playerCount.count, false, boxes).rows)
-            setBoxes(generateGrid(playerCount.count, false, boxes).boxes)
+            setGrid(generateGrid(playerCount.count, false, lsBoxes).rows)
+            setBoxes(generateGrid(playerCount.count, false, lsBoxes).boxes)
         }
     }, [])  
 
     return (
        <>
         {
-          playTurn != 'none'? (
+          playTurn != 'none' && JSON.parse(localStorage.getItem('boxes'))? (
                 <>
                   <div className={ `game-container ${ playOrder? playOrder[playTurn].player : false } ` } style={ { position: gameEnded? 'fixed': 'relative' } }>
                         {

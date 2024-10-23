@@ -89,3 +89,12 @@
 .not-available p{
     color: #565656;
 }
+
+.main-load{
+    position: absolute;
+    top: 52%;
+    left: 50%;
+    font-size: 26px;
+    transform: translate(-50%, -50%);
+    color: #95c1d4;
+}

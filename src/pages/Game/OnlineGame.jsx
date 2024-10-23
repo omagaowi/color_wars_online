@@ -176,6 +176,7 @@ const OnlineGame = () => {
                 player: userData,
                 room: currentRoom,
                 box: thisBox,
+                currentGrid: boxes,
                 turn: playOrder[playTurn]
             }
             clientSocket.emit('play', data)
