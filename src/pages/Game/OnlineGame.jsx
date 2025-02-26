@@ -1,77 +1,56 @@
-import { useEffect } from "react"
-import Grid from "../../components/GridArea.jsx"
-import { useGridStore } from "../../utils/mainStore.js"
-import { generateGrid } from "../../utils/generateGrid.js"
-import { gameDataStore, alertStore } from "../../utils/online/otherStores.jsx"
-import { useState } from "react"
-import Loader from "../../components/Loader.jsx"
-import { useMenuStore } from "../../utils/mainStore.js"
-import { useAuthStore } from "../../utils/online/authStore.jsx"
-import GameHeading from "../../components/GameHeading.jsx"
+import { useEffect, useState } from 'react'
+import Grid from '../../components/GridArea.jsx'
+import Loader from '../../components/Loader.jsx'
+import '../../styles/gameStyles/gameStyles.css'
+import { generateGrid } from '../../utils/generateGrid.js'
 
 
-let boxClickOnline
-let playLogic
-let timeOutLogic
-let disconnectTimer
+import { useMenuStore, useGridStore, useEliminatedStore } from '../../utils/mainStore.js'
+import Results from '../../components/Results.jsx'
+import GameError from '../../components/GameError.jsx'
+import GameHeading from '../../components/GameHeading.jsx'
 
-const OnlineGame = () => {
+let boxClick
 
-    const { userData, updateUserData, currentRoom, currentRoomPlayers, updateCurrentRoomPlayers, updateCurrentRoom, clientSocket, isAdmin, updateisAdmin } = useAuthStore((state) => ({
-        userData: state.userData,
-        updateUserData: state.updateUserData,
-        currentRoom: state.currentRoom,
-        updateCurrentRoom: state.updateCurrentRoom,
-        currentRoomPlayers: state.currentRoomPlayers,
-        updateCurrentRoomPlayers: state.updateCurrentRoomPlayers,
-        clientSocket: state.clientSocket,
-        isAdmin: state.isAdmin,
-        updateisAdmin: state.updateisAdmin
-    }))
 
-    const [playOrder, setPlayOrder] = useState([])
-    const [showLoader, setShowLoader] = useState(true)
-    const [grid, setGrid] = useState(false)
-    const [playTurn, setPlayTurn] = useState(0)
-    const { gameData, updateGameData, setPlayLoading} = gameDataStore((state) => ({
-        gameData: state.gameData,
-        updateGameData: state.updateGameData,
-        setPlayLoading: state.setPlayLoading
-    }))
-    const [hasPlayed, setHasPlayed] = useState(false)
-    const [timer, setTimer] = useState(0)
-    let time
+const OfflineGame = () => {
 
-    const { mode, setMode, playerCount, setPlayerCount} = useMenuStore((state) => ({ 
+    const { mode, setMode , playerCount, setPlayerCount} = useMenuStore((state) => ({ 
         mode: state.mode,
         setMode: state.setMode,
         playerCount: state.playerCount,
         setPlayerCount: state.setPlayerCount
     }))  
 
+
     const { boxes, setBoxes } = useGridStore((state) => ({
         boxes: state.boxes,
         setBoxes: state.setBoxes
-    })) 
-
-    const { show, alert, setShow, setAlert, timeout, updateTimeout } = alertStore((state) => ({
-        alert: state.alert,
-        show: state.show,
-        setShow: state.setShow,
-        setAlert: state.setAlert,
-        timeout: state.timeout,
-        updateTimeout: state.updateTimeout
     }))
+
+     const { eliminated, setEliminated } = useEliminatedStore((state) => ({
+      eliminated: state.eliminated,
+      setEliminated: state.setEliminated
+     }))
 
     let turnInterval = false
 
+    const [grid, setGrid] = useState(false)
     const [initialPlays, setInitialPlays] = useState({
-        blue: false,
-        red: false,
-        green: false,
-        yellow: false,
+      blue: false,
+      red: false,
+      green: false,
+      yellow: false,
     })
+    const [playOrder, setPlayOrder] = useState([])
+    const [showLoader, setShowLoader] = useState(true)
+    const [playTurn, setPlayTurn] = useState(0)
+    const [hasPlayed, setHasPlayed] = useState(false)
+    const [gameEnded, setGameEnded] = useState(false)
+    const [timer, setTimer] = useState(0)
+    let time
 
+    // console.log(playOrder, grid)
 
     const determineRebound = (row, columnNo) => {
         const rebounds = [
@@ -94,7 +73,6 @@ const OnlineGame = () => {
         ]
         return rebounds;
     }
-
 
     const checkInitialPlays = (player) => {
         if(player == 'blue'){
@@ -123,8 +101,8 @@ const OnlineGame = () => {
           dummyPlays.yellow = true
           setInitialPlays(prev => dummyPlays)
         }
-    }
-
+      }
+    
 
     const chosen = (rowNo, columnNo, index, player, rootCell) => {
         // console.log(rowNo, columnNo)
@@ -170,84 +148,65 @@ const OnlineGame = () => {
         
     }
 
-    const emitPlay = async (thisBox) => {
-        try {
-            const data = {
-                player: userData,
-                room: currentRoom,
-                box: thisBox,
-                currentGrid: boxes,
-                turn: playOrder[playTurn]
-            }
-            clientSocket.emit('play', data)
-            return true
-        } catch (error) {
-            throw error
-        }
-    }
-
-    const emitTimeout = async () => {
-        try {
-            const data = {
-                player: userData,
-                room: currentRoom,
-                box: false,
-                turn: playOrder[playTurn]
-            }
-            clientSocket.emit('timeout', data)
-        } catch (error) {
-            throw error
-        }
-    }
-
-    const getPlayerTurn = () => {
-        console.log(currentRoom)
-        const player = currentRoom.users.find(function(el){
-            return el.playerColor.color == gameData.gameInfo.playOrder[playTurn] 
+    const checkPlayerScore = (player) => {
+      if(boxes){
+        const playerBoxes = boxes.filter(function(el){
+          return el.player.includes(player)
         })
-        console.log(gameData)
-        return player
+        return playerBoxes.length
+      }
     }
-    
 
-    boxClickOnline = (thisBox) => {
-        if(getPlayerTurn().userID == userData.userID){
-            const player = playOrder[playTurn]
-            if(thisBox.player.length == 0){
-                if(checkInitialPlays(player)){
-                    	
-                }else{
-                    setHasPlayed(prev => true)
-                    setPlayLoading(true)
-                    emitPlay(thisBox).then(() => {
-                        
-                    }).catch((err) => {
-                        setHasPlayed(prev => false)
-                        setPlayLoading(false)
-                    })
-                }
-            }else{
-                if(thisBox.player.includes(playOrder[playTurn])){
-                   //play
-                   setHasPlayed(prev => true)
-                   setPlayLoading(true)
-                   emitPlay(thisBox).then(() => {
-                        setPlayLoading(false)
-                   }).catch((err) => {
-                         setHasPlayed(prev => false)
-                        setPlayLoading(false)
-                   })
-                }
+    const eliminatePlayers = () => {
+      if(playOrder){
+        playOrder.forEach(player => {
+          if(checkPlayerScore(player) == 0 && checkInitialPlays(player)){
+            if(!eliminated.includes(player)){
+              setEliminated(player)
             }
-        }
+          }
+        })
+      }
     }
 
 
-    playLogic = (box) => {
-        console.log(box)
-        const thisBox = boxes.find(function(el){
-            return el.row == box.row && el.column == box.column
-        })
+    const checkFirstPlace = (player) => {
+      const playerBoxes = boxes.filter(function(el){
+        return el.player.includes(player)
+      })
+      const occupiedBoxes =  boxes.filter(function(el){
+        return el.player.length != 0
+      })
+      if(playerBoxes.length == occupiedBoxes.length){
+        return true
+      }else{
+        return false
+      }
+    }
+
+
+
+    // const gameTimer = setInterval(() => {
+    //   setTimer(prev => prev += 1)
+    //   clearInterval(gameTimer)
+    // }, 1000)
+
+    // console.log(timer)
+
+    useEffect(() => {
+      if(timer < 15){
+        time = setTimeout(() => setTimer(prev => prev += 0.2), 200)
+        if(hasPlayed){
+          clearTimeout(time)
+        }
+        return () => clearTimeout(time)
+      }
+    },[timer])
+
+
+
+    boxClick = (thisBox) => {
+        if(!hasPlayed){
             const player = playOrder[playTurn]
             if(thisBox.player.length == 0){
               if(checkInitialPlays(player)){
@@ -259,6 +218,7 @@ const OnlineGame = () => {
                 dummyBoxes[thisIndex].circles = 3
                 setBoxes(dummyBoxes)
                 removeInitialPlays(player)
+                setHasPlayed(prev => true)
                 setTimeout(() => {
                   chosen(thisBox.row, thisBox.column, 0, player, false)
                 }, 700);
@@ -269,191 +229,107 @@ const OnlineGame = () => {
                   const thisIndex = dummyBoxes.indexOf(thisBox)
                   dummyBoxes[thisIndex].player = [player]
                   dummyBoxes[thisIndex].circles += 1;
-                //   console.log(dummyBoxes[thisIndex].circles += 1)
                   setBoxes(dummyBoxes)
+                  setHasPlayed(prev => true)
                   setTimeout(() => {
                     chosen(thisBox.row, thisBox.column, 0, player, false)
                   }, 700);
               }
             }
+          }
     }
 
-    timeOutLogic = (data) => {
-        updateTimeout(setTimeout(() => {
-            setAlert({
-                type: 'warning',
-                users: [ getPlayerTurn() ],
-                message: getPlayerTurn().userID == userData.userID? 'time up!' : `${getPlayerTurn().name}'s time was up!`,
-                color: getPlayerTurn().playerColor.color
-            })
-            setTimeout(() => {
-                setShow(true)
-            }, 200)
-        }, 100))
-        setTimeout(() => {
-            setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
-        }, 1700);
-    }
+    // console.log(eliminated)
 
-
-
-    // boxClickOnline = (thisBox) => {
-    //     if(!hasPlayed){
-            
-    //     }
-    // }
-
-
-    useEffect(() => {
-        if(timer < 15){
-            time = setTimeout(() => setTimer(prev => prev += 0.2), 200)
-            if(hasPlayed){
-              clearTimeout(time)
-            }
-            return () => clearTimeout(time)
-        }else{
-            if(getPlayerTurn().userID == userData.userID){
-                emitTimeout().then(() => {
-
-                }).catch(() => {
-
-                })
-                console.log('timeout')
-            }
-        }
-      },[timer])
-
-
-
-
-      const emitDisconnectTimeout = async (data) => {
-        try {
-            await clientSocket.emit('disconnectTimeout', data)
-        } catch (error) {
-            throw error;
-        }
-      }
-
-    
     useEffect(() => {
         sessionStorage.removeItem('lastPlay')
-        console.log(getPlayerTurn())
-        if(getPlayerTurn().status === 'disconnected'){
-            disconnectTimer = setTimeout(() => {
-                const data = {
-                    player: getPlayerTurn(),
-                    room: currentRoom,
-                    box: false,
-                    turn: playOrder[playTurn]
-                }
-               emitDisconnectTimeout(data).then(() => {
-                console.log('timeout')
-               }).catch((err) => {
+        setHasPlayed(prev => false)
+        if(turnInterval){
+          clearInterval(turnInterval)
+        }
 
-               })
-               clearTimeout(disconnectTimer)
-            }, 15000)
-        }else if(getPlayerTurn().status === 'left'){
+        eliminatePlayers()
+        if(checkInitialPlays(playOrder[playTurn])){
+          if(checkFirstPlace(playOrder[playTurn])){
+            if(!eliminated.includes(playOrder[playTurn])){
+              setEliminated(playOrder[playTurn])
+              console.log('end game')
+              setGameEnded(prev => true)
+            }else{
+              setGameEnded(prev => true)
+            }
+          }
+        }
 
-        }else if(getPlayerTurn().status === 'online'){
-            if(showLoader == false){
-                updateTimeout(setTimeout(() => {
-                    setAlert({
-                        type: 'turn',
-                        users: [ getPlayerTurn() ],
-                        message: getPlayerTurn().userID == userData.userID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
-                        color: getPlayerTurn().playerColor.color
-                    })
-                    setTimeout(() => {
-                        setShow(true)
-                    }, 200)
-                }, 100))
+        if(showLoader == false){
+          setTimer(prev => 0)
+        }
+
+        if(checkPlayerScore(playOrder[playTurn]) == 0 && checkInitialPlays(playOrder[playTurn])){
+          setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+        }else{
+          turnInterval = setInterval(()=>{
+            if(sessionStorage.getItem('lastPlay')){
+              const diff = Date.now() - JSON.parse(sessionStorage.getItem('lastPlay')).timestamp
+              if(diff > 1500){
+                setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+                clearInterval(turnInterval)
+              }
             }
-    
-            if(showLoader == false){
-                if(getPlayerTurn().userID == userData.userID){
-                    setTimer(prev => 0)
-                }
-            }
-    
-            setHasPlayed(prev => false)
-              turnInterval = setInterval(()=>{
-                if(sessionStorage.getItem('lastPlay')){
-                  const diff = Date.now() - JSON.parse(sessionStorage.getItem('lastPlay')).timestamp
-                  if(diff > 1500){
-                    setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
-                    clearInterval(turnInterval)
-                  }
-                }
-              }, 1000)
+          }, 1000)
         }
     }, [playTurn])
 
     useEffect(() => {
-        if(showLoader == false){
-          setTimer(prev => 0)
-        }
-      }, [showLoader])
-
-    useEffect(() => {
-        if(!showLoader){
-            updateTimeout(setTimeout(() => {
-                setAlert({
-                    type: 'turn',
-                    users: [ getPlayerTurn() ],
-                    message: getPlayerTurn().userID == userData.userID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
-                    color: getPlayerTurn().playerColor.color
-                })
-                setTimeout(() => {
-                    setShow(true)
-                }, 200)
-            }, 100))
-        }
+      if(showLoader == false){
+        setTimer(prev => 0)
+      }
     }, [showLoader])
 
     useEffect(() => {
-        if(gameData){
-            setPlayOrder(gameData.gameInfo.playOrder)
-            setGrid(gameData.gameInfo.playGrid)
-            setMode('online')
-            setPlayerCount({
-                tvt: false,
-                count: gameData.gameInfo.playOrder.length
-            })
+        if(playerCount){
+          const lsBoxes = JSON.parse(localStorage.getItem('boxes'))
+          setPlayOrder(generateGrid(playerCount.count, false, lsBoxes).order)
+          setGrid(generateGrid(playerCount.count, false, lsBoxes).rows)
+          // console.log(generateGrid(playerCount.count).boxes)
+          setBoxes(generateGrid(playerCount.count, false, lsBoxes).boxes)
         }
-    }, [])
+    }, [])  
 
     return (
-        <>
-            {
-                playerCount?(
-                    <div className={`game-container ${playOrder[playTurn]}`}>
-                        {
-                            boxes.length > 0? (
-                                <Grid grid = { grid }/>
-                            ):(
-                                <></>
-                            )
-                        }
-                        <>
-                        { 
-                            showLoader ? (
-                                <Loader setLoader = { setShowLoader } firstPlay = { playOrder.length > 0 ? playOrder[0] : false } playerCount = { playerCount }/>
-                            ) : (
-                                <>
-                                  <GameHeading color = { playOrder[playTurn] } players = { [] } timer = { timer } isTurn = { getPlayerTurn().userID == userData.userID } />
-                                </>
-                            )
-                        }
-                        </>
-                    </div>
-                ):(
-                    <></>
-                )
-            }
-        </>
+      <>
+        {
+          playerCount && JSON.parse(localStorage.getItem('boxes'))? (
+              <>
+                <div className={ `game-container ${ playOrder[playTurn] }` } style={ { position: gameEnded? 'fixed': 'relative' } }>
+                {/* <GameHeading color = { playOrder[playTurn] } players = { [] } timer = { timer }/> */}
+                    <Grid playTurn = { playTurn } playOrder = { playOrder } hasPlayed = { hasPlayed } initialPlays = { initialPlays }
+                    grid = { grid }/>
+                    { 
+                        showLoader ? (
+                            <Loader setLoader = { setShowLoader } firstPlay = { playOrder.length > 0 ? playOrder[0] : false } playerCount = { playerCount.count }/>
+                        ) : (
+                            <></>
+                        )
+                    }
+                </div>
+                {
+                      gameEnded? (
+                        <Results eliminated = { eliminated }/>
+                      ):(
+                        <></>
+                      )
+                }
+              </>
+          ):(
+            // <>{ timer }</>
+            <GameError />
+          )
+        }
+      </>
+
     )
 }
 
-export { boxClickOnline, playLogic, timeOutLogic}
-export default OnlineGame
+export {boxClick }
+export default OfflineGame
