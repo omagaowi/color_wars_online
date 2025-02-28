@@ -4,7 +4,7 @@ import { useMenuStore } from '../utils/mainStore.js'
 import { boxClick } from '../pages/Game/OffilineGame.jsx'
 import { boxClick2v2 } from '../pages/Game/OfflineGame2v2.jsx'
 
-// import { boxClickOnline } from '../pages/Game/OnlineGame.jsx'
+import { boxClickOnline } from '../pages/Game/OnlineGame.jsx'
 import LoaderRing from './LoaderRing.jsx'
 import { gameDataStore } from '../utils/online/otherStores.jsx'
 

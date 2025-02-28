@@ -166,6 +166,10 @@
     cursor: pointer;
   background: #4e839a;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   outline: none;
   position: relative;
   color: #73bbd9;

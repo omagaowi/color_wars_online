@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import'../styles/loader.css' 
 
 const Loader = ({ setLoader, firstPlay, playerCount }) => {
+
+    // console.log(firstPlay, playerCount)
     
 
     // const player_count = 4

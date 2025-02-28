@@ -9,11 +9,16 @@ import { useMenuStore, useGridStore, useEliminatedStore } from '../../utils/main
 import Results from '../../components/Results.jsx'
 import GameError from '../../components/GameError.jsx'
 import GameHeading from '../../components/GameHeading.jsx'
+import { gameDataStore } from '../../utils/online/otherStores.jsx'
+import { useAuthStore } from '../../utils/online/authStore.jsx'
+import { newAlert } from '../../components/Alerts.jsx'
 
-let boxClick
+// let boxClick
+let boxClickOnline
+let handlePlay
 
 
-const OfflineGame = () => {
+const OnlineGame = () => {
 
     const { mode, setMode , playerCount, setPlayerCount} = useMenuStore((state) => ({ 
         mode: state.mode,
@@ -27,6 +32,24 @@ const OfflineGame = () => {
         boxes: state.boxes,
         setBoxes: state.setBoxes
     }))
+
+    const { gameData, updateGameData } = gameDataStore((state) => ({
+      gameData: state.gameData,
+      updateGameData: state.updateGameData
+  }))
+
+  const { userData, updateUserData, isAdmin, updateIsAdmin, clientSocket, currentRoom, updateCurrentRoom, currentRoomPlayers, updateCurrentRoomPlayers } = useAuthStore((state) => ({
+    userData: state.userData,
+    updateUserData: state.updateUserData,
+    currentRoom: state.currentRoom,
+    currentRoomPlayers: state.currentRoomPlayers,
+    updateCurrentRoom: state.updateCurrentRoom,
+    updateCurrentRoomPlayers: state.updateCurrentRoomPlayers,
+    clientSocket: state.clientSocket,
+    isAdmin: state.isAdmin,
+    updateIsAdmin: state.updateIsAdmin
+}))
+
 
      const { eliminated, setEliminated } = useEliminatedStore((state) => ({
       eliminated: state.eliminated,
@@ -73,6 +96,16 @@ const OfflineGame = () => {
         ]
         return rebounds;
     }
+
+    const getPlayerTurn = () => {
+      // console.log(currentRoom)
+      console.log(currentRoomPlayers)
+      const player = currentRoomPlayers.find(function(el){
+          return el.color.color == gameData.playOrder[playTurn] 
+      })
+      // console.log(gameData)
+      return player
+  }
 
     const checkInitialPlays = (player) => {
         if(player == 'blue'){
@@ -204,65 +237,189 @@ const OfflineGame = () => {
     },[timer])
 
 
-
-    boxClick = (thisBox) => {
-        if(!hasPlayed){
-            const player = playOrder[playTurn]
-            if(thisBox.player.length == 0){
-              if(checkInitialPlays(player)){
-               
-              }else{
-                const dummyBoxes = boxes
-                const thisIndex = dummyBoxes.indexOf(thisBox)
-                dummyBoxes[thisIndex].player = [player]
-                dummyBoxes[thisIndex].circles = 3
-                setBoxes(dummyBoxes)
-                removeInitialPlays(player)
-                setHasPlayed(prev => true)
-                setTimeout(() => {
-                  chosen(thisBox.row, thisBox.column, 0, player, false)
-                }, 700);
-              }
-            }else{
-              if(thisBox.player.includes(playOrder[playTurn])){
-                  const dummyBoxes = boxes
-                  const thisIndex = dummyBoxes.indexOf(thisBox)
-                  dummyBoxes[thisIndex].player = [player]
-                  dummyBoxes[thisIndex].circles += 1;
-                  setBoxes(dummyBoxes)
-                  setHasPlayed(prev => true)
-                  setTimeout(() => {
-                    chosen(thisBox.row, thisBox.column, 0, player, false)
-                  }, 700);
-              }
-            }
+    const emitPlay = async (thisBox) => {
+      try {
+          const data = {
+              player: userData,
+              room: currentRoom,
+              box: thisBox,
+              turn: playOrder[playTurn]
           }
-    }
+          clientSocket.emit('play', data)
+          return true
+      } catch (error) {
+          throw error
+      }
+  }
+
+
+
+    // boxClick = (thisBox) => {
+    //     if(!hasPlayed){
+    //         const player = playOrder[playTurn]
+    //         if(thisBox.player.length == 0){
+    //           if(checkInitialPlays(player)){
+               
+    //           }else{
+    //             const dummyBoxes = boxes
+    //             const thisIndex = dummyBoxes.indexOf(thisBox)
+    //             dummyBoxes[thisIndex].player = [player]
+    //             dummyBoxes[thisIndex].circles = 3
+    //             setBoxes(dummyBoxes)
+    //             removeInitialPlays(player)
+    //             setHasPlayed(prev => true)
+    //             setTimeout(() => {
+    //               chosen(thisBox.row, thisBox.column, 0, player, false)
+    //             }, 700);
+    //           }
+    //         }else{
+    //           if(thisBox.player.includes(playOrder[playTurn])){
+    //               const dummyBoxes = boxes
+    //               const thisIndex = dummyBoxes.indexOf(thisBox)
+    //               dummyBoxes[thisIndex].player = [player]
+    //               dummyBoxes[thisIndex].circles += 1;
+    //               setBoxes(dummyBoxes)
+    //               setHasPlayed(prev => true)
+    //               setTimeout(() => {
+    //                 chosen(thisBox.row, thisBox.column, 0, player, false)
+    //               }, 700);
+    //           }
+    //         }
+    //       }
+    // }
+
+
+
+
+     boxClickOnline = (thisBox) => {
+            if(getPlayerTurn().playerID == userData.playerID){
+                const player = playOrder[playTurn]
+                if(thisBox.player.length == 0){
+                    if(checkInitialPlays(player)){
+                          
+                    }else{
+                        setHasPlayed(prev => true)
+                        // setPlayLoading(true)
+                        emitPlay(thisBox).then(() => {
+                            
+                        }).catch((err) => {
+                            setHasPlayed(prev => false)
+                            // setPlayLoading(false)
+                        })
+                    }
+                }else{
+                    if(thisBox.player.includes(playOrder[playTurn])){
+                       //play
+                       setHasPlayed(prev => true)
+                      //  setPlayLoading(true)
+                       emitPlay(thisBox).then(() => {
+                            // setPlayLoading(false)
+                       }).catch((err) => {
+                             setHasPlayed(prev => false)
+                            // setPlayLoading(false)
+                       })
+                    }
+                }
+            }
+        }
+
+
+        const cachingEvents = (box, turn) => {
+          let cachedEvents = JSON.parse(localStorage.getItem('cachedEvents'))
+          const thisEvent = cachedEvents.find(function(el){
+            return el.color == turn
+          })
+          cachedEvents[cachedEvents.indexOf(thisEvent)].box = box
+          localStorage.setItem('cachedEvents', JSON.stringify(cachedEvents))
+          // console.log(cachedEvents)
+        }
+
+        const getCachedEvent = (turn) => {
+          const cachedEvents = JSON.parse(localStorage.getItem('cachedEvents'))
+          const thisEvent = cachedEvents.find(function(el){
+            return el.color == turn
+          })
+          return thisEvent
+        }
 
     // console.log(eliminated)
 
+     handlePlay = (data) => {
+      // console.log(data)
+      // console.log(data.box)
+      if(!showLoader){
+        if(getPlayerTurn().playerID == data.player.playerID){
+          playLogic(data.box)
+          cachingEvents(false, data.turn)
+        }else{
+          //cache event
+          cachingEvents(data.box, data.turn)
+        }
+      }else{
+        //cache event
+        cachingEvents(data.box, data.turn)
+      }
+    }
+
+     const playLogic = (box) => {
+            console.log(box)
+            const thisBox = boxes.find(function(el){
+                return el.row == box.row && el.column == box.column
+            })
+                const player = playOrder[playTurn]
+                if(thisBox.player.length == 0){
+                  if(checkInitialPlays(player)){
+                   
+                  }else{
+                    const dummyBoxes = boxes
+                    const thisIndex = dummyBoxes.indexOf(thisBox)
+                    dummyBoxes[thisIndex].player = [player]
+                    dummyBoxes[thisIndex].circles = 3
+                    setBoxes(dummyBoxes)
+                    removeInitialPlays(player)
+                    setTimeout(() => {
+                      chosen(thisBox.row, thisBox.column, 0, player, false)
+                    }, 700);
+                  }
+                }else{
+                  if(thisBox.player.includes(playOrder[playTurn])){
+                      const dummyBoxes = boxes
+                      const thisIndex = dummyBoxes.indexOf(thisBox)
+                      dummyBoxes[thisIndex].player = [player]
+                      dummyBoxes[thisIndex].circles += 1;
+                    //   console.log(dummyBoxes[thisIndex].circles += 1)
+                      setBoxes(dummyBoxes)
+                      setTimeout(() => {
+                        chosen(thisBox.row, thisBox.column, 0, player, false)
+                      }, 700);
+                  }
+                }
+        }
+
+
     useEffect(() => {
+      if(gameData){
         sessionStorage.removeItem('lastPlay')
-        setHasPlayed(prev => false)
+        if(getPlayerTurn().status == 'online'){
+          setHasPlayed(prev => false)
         if(turnInterval){
           clearInterval(turnInterval)
         }
 
-        eliminatePlayers()
-        if(checkInitialPlays(playOrder[playTurn])){
-          if(checkFirstPlace(playOrder[playTurn])){
-            if(!eliminated.includes(playOrder[playTurn])){
-              setEliminated(playOrder[playTurn])
-              console.log('end game')
-              setGameEnded(prev => true)
-            }else{
-              setGameEnded(prev => true)
-            }
-          }
-        }
-
         if(showLoader == false){
-          setTimer(prev => 0)
+          // setTimer(prev => 0)
+          newAlert({
+            type: 'turn',
+            users: [ getPlayerTurn() ],
+            message: getPlayerTurn().playerID == userData.playerID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
+            color: getPlayerTurn().color.color
+        })
+        if(getCachedEvent(gameData.playOrder[playTurn]).box){
+          playLogic(getCachedEvent(gameData.playOrder[playTurn]).box)
+          cachingEvents(false, gameData.playOrder[playTurn])
+        }
+        }else{
+
         }
 
         if(checkPlayerScore(playOrder[playTurn]) == 0 && checkInitialPlays(playOrder[playTurn])){
@@ -278,28 +435,63 @@ const OfflineGame = () => {
             }
           }, 1000)
         }
+        }else{
+          
+        }
+      }
     }, [playTurn])
 
     useEffect(() => {
-      if(showLoader == false){
-        setTimer(prev => 0)
+      if(!showLoader){
+        newAlert({
+          type: 'turn',
+          users: [ getPlayerTurn() ],
+          message: getPlayerTurn().playerID == userData.playerID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
+          color: getPlayerTurn().color.color
+        })
+        if(getCachedEvent(gameData.playOrder[playTurn]).box){
+          playLogic(getCachedEvent(gameData.playOrder[playTurn]).box)
+          cachingEvents(false, gameData.playOrder[playTurn])
+        }
       }
-    }, [showLoader])
+  }, [showLoader])
 
     useEffect(() => {
-        if(playerCount){
-          const lsBoxes = JSON.parse(localStorage.getItem('boxes'))
-          setPlayOrder(generateGrid(playerCount.count, false, lsBoxes).order)
-          setGrid(generateGrid(playerCount.count, false, lsBoxes).rows)
-          // console.log(generateGrid(playerCount.count).boxes)
-          setBoxes(generateGrid(playerCount.count, false, lsBoxes).boxes)
-        }
-    }, [])  
+      if(gameData){
+          localStorage.setItem('cachedEvents', JSON.stringify(
+            [
+              {
+                color: 'blue',
+                box: false
+              },
+              {
+                color: 'red',
+                box: false
+              },
+              {
+                color: 'green',
+                box: false
+              },
+              {
+                color: 'yellow',
+                box: false
+              },
+            ]
+          ))
+          setPlayOrder(gameData.playOrder)
+          setGrid(gameData.playGrid)
+          setMode('online')
+          setPlayerCount({
+              tvt: false,
+              count: gameData.playOrder.length
+          })
+      }
+  }, [])
 
     return (
       <>
         {
-          playerCount && JSON.parse(localStorage.getItem('boxes'))? (
+          playerCount && gameData ? (
               <>
                 <div className={ `game-container ${ playOrder[playTurn] }` } style={ { position: gameEnded? 'fixed': 'relative' } }>
                 {/* <GameHeading color = { playOrder[playTurn] } players = { [] } timer = { timer }/> */}
@@ -331,5 +523,5 @@ const OfflineGame = () => {
     )
 }
 
-export {boxClick }
-export default OfflineGame
+export {boxClickOnline, handlePlay }
+export default OnlineGame

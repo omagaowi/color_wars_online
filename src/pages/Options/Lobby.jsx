@@ -6,7 +6,7 @@ import Cookies from 'js-cookie'
 import { useState } from 'react'
 import { useAuthStore } from '../../utils/online/authStore.jsx'
 import { alertStore, colors, gameDataStore } from '../../utils/online/otherStores.jsx'
-import { useNavigate } from 'react-router-dom'
+import { Await, useNavigate } from 'react-router-dom'
 import { generateGrid } from '../../utils/generateGrid.js'
 import Error from '../../components/Error.jsx'
 import { useGridStore } from '../../utils/mainStore.js'
@@ -16,12 +16,14 @@ import { newAlert } from '../../components/Alerts.jsx'
 
 let handleUserEvents
 let handleConnectErrors
+let handleStartEvent 
 
 const Lobby = () => {
     const navigate = useNavigate()
   
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(false)
+    const [startGameLoading, setStartGameLoading] = useState(false)
 
     const { userData, updateUserData, isAdmin, updateIsAdmin, clientSocket, currentRoom, updateCurrentRoom, currentRoomPlayers, updateCurrentRoomPlayers } = useAuthStore((state) => ({
         userData: state.userData,
@@ -35,6 +37,28 @@ const Lobby = () => {
         updateIsAdmin: state.updateIsAdmin
     }))
 
+    const { gameData, updateGameData } = gameDataStore((state) => ({
+        gameData: state.gameData,
+        updateGameData: state.updateGameData
+    }))
+
+    
+    const { boxes, setBoxes } = useGridStore((state) => ({
+        boxes: state.boxes,
+        setBoxes: state.setBoxes
+    })) 
+
+
+
+    const fetchGrid = async () => {
+        try {
+            const response = await fetch('/boxes.json')
+            const data = await response.json()
+            return data
+        } catch (error) {
+            throw error
+        }
+    }
 
     console.log(currentRoom, currentRoomPlayers)
 
@@ -60,20 +84,57 @@ const Lobby = () => {
                 color: data.action == 'joined'? 'green' : 'red'
             })
         }
-        if(data.players[0].playerID == userData.playerID){
-            console.log('admin')
-        }else{
-            console.log('n admin')
-        }
         updateIsAdmin(data.players[0].playerID == userData.playerID? true : false)
     }
 
-    console.log(isAdmin)
+    // console.log(isAdmin)
 
     handleConnectErrors = (error) => {
-        console.log(error)
         setLoading(false)
         setError(error)
+    }
+
+    handleStartEvent = (data) => {
+        console.log(data)
+        setStartGameLoading(prev => false)
+        setBoxes(data.gameInfo.playBoxes)
+        updateGameData({
+            playOrder: data.gameInfo.playOrder,
+            playGrid: data.gameInfo.playGrid
+        })
+        updateCurrentRoom(data.room)
+        updateCurrentRoomPlayers(data.players)
+        newAlert({
+            type: 'success',
+            message: 'This game has started',
+            color: 'green',
+            players: []
+        })
+        navigate(`/online/game/${ currentRoom.roomID }`)
+    }
+
+    const startGame = async (boxes) => {
+        try {
+            const data = {
+                room: currentRoom,
+                player: userData,
+                players: currentRoomPlayers.map((player, index) => ({
+                    ...player,
+                    color: colors[index]
+                })),
+                gameInfo: {
+                    playOrder: generateGrid(currentRoomPlayers.length, false, boxes).order,
+                    playGrid: generateGrid(currentRoomPlayers.length, false, boxes).rows,
+                    playBoxes: generateGrid(currentRoomPlayers.length, false, boxes).boxes
+                }
+            }
+            // console.log(data)
+            await clientSocket.emit('startGame', data)
+            const result = true
+            return result
+        } catch (error) {
+            throw error
+        }
     }
     
 
@@ -82,7 +143,7 @@ const Lobby = () => {
             if(clientSocket){
                 await clientSocket.emit('joinroom', data)
                 const result = true
-                return true
+                return result
             }
         } catch (error) {
             throw error
@@ -141,7 +202,7 @@ const Lobby = () => {
                                         setLoading(true)
                                         setError(false)
                                         joinRoom(data).then(result => {
-                                            console.log(result)
+                                            // console.log(result)
                                         }).catch(error => {
                                             setLoading(false)
                                             setError('Please check your connection')
@@ -236,9 +297,47 @@ const Lobby = () => {
                                                     {
                                                         isAdmin? (
                                                             <>
-                                                                 <button >
-                                                        <>Start Game</>
-                                                    </button>
+                                                                <button style={ { pointerEvents: startGameLoading? 'none' : 'all' } } onClick={ () => {
+                                                                    if(currentRoomPlayers.length > 1){
+                                                                        if(isAdmin){
+                                                                            const lsBoxes = localStorage.getItem('boxes')
+                                                                            if(lsBoxes){
+                                                                                // console.log(JSON.parse(lsBoxes))
+                                                                                setStartGameLoading(true)
+                                                                                startGame(JSON.parse(lsBoxes)).then(result => {
+                                                                                    
+                                                                                }).catch(error => {
+                                                                                    setStartGameLoading(false)
+                                                                                })
+                                                                            }else{
+                                                                                fetchGrid().then(data => {
+                                                                                    // console.log(data)
+                                                                                    setStartGameLoading(true)
+                                                                                    localStorage.setItem('boxes', JSON.stringify(data.boxes))
+                                                                                    startGame(data.boxes).then(result => {
+
+                                                                                    }).catch(error => {
+                                                                                        etStartGameLoading(false)
+                                                                                    })
+                                                                                }).catch(error => {
+
+                                                                                })
+                                                                            }
+                                                                        }
+                                                                    }else{
+
+                                                                    }
+                                                                } }>
+                                                                    <>{
+                                                                        startGameLoading? (
+                                                                            <>
+                                                                                <CircularLoader size={ 25 } color='#73bbd9'/>
+                                                                            </>
+                                                                        ):(
+                                                                            <>Start Game</>
+                                                                        )
+                                                                    }</>
+                                                                </button>
                                                     <button>2 v 2 Game</button>
                                                     <button>End Game</button>
                                                             </>
@@ -259,5 +358,5 @@ const Lobby = () => {
         </div>
     )
 }
-export { handleUserEvents, handleConnectErrors }
+export { handleUserEvents, handleConnectErrors, handleStartEvent }
 export default Lobby

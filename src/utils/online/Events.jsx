@@ -1,4 +1,5 @@
-import { handleConnectErrors, handleUserEvents } from "../../pages/Options/Lobby"
+import { handlePlay } from "../../pages/Game/OnlineGame"
+import { handleConnectErrors, handleStartEvent, handleUserEvents } from "../../pages/Options/Lobby"
 
 
 const Events = (socket) => {
@@ -8,6 +9,12 @@ const Events = (socket) => {
    })
    socket.on('joinError', (data) => {
     handleConnectErrors(data)
+   })
+   socket.on('startGame', (data) => {
+      handleStartEvent(data)
+   })
+   socket.on('play', (data) => {
+      handlePlay(data)
    })
 }
 
