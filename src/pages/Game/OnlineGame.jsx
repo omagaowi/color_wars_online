@@ -12,11 +12,18 @@ import GameHeading from '../../components/GameHeading.jsx'
 import { gameDataStore } from '../../utils/online/otherStores.jsx'
 import { useAuthStore } from '../../utils/online/authStore.jsx'
 import { newAlert } from '../../components/Alerts.jsx'
+import UserList from '../../components/UserList.jsx'
+import OnClickOutside from '../../components/OnClickOutside.jsx'
+import { useNavigate } from 'react-router-dom'
 
 // let boxClick
 let boxClickOnline
 let handlePlay
-
+let handlePlayerDisconnect
+let handleTimeout
+let changeTimout
+let handleEnded
+let handleResults
 
 const OnlineGame = () => {
 
@@ -38,7 +45,7 @@ const OnlineGame = () => {
       updateGameData: state.updateGameData
   }))
 
-  const { userData, updateUserData, isAdmin, updateIsAdmin, clientSocket, currentRoom, updateCurrentRoom, currentRoomPlayers, updateCurrentRoomPlayers } = useAuthStore((state) => ({
+  const { userData, updateUserData, isAdmin, setGameResults, showUserList, setShowUserList, updateIsAdmin, clientSocket, currentRoom, updateCurrentRoom, currentRoomPlayers, updateCurrentRoomPlayers } = useAuthStore((state) => ({
     userData: state.userData,
     updateUserData: state.updateUserData,
     currentRoom: state.currentRoom,
@@ -47,7 +54,10 @@ const OnlineGame = () => {
     updateCurrentRoomPlayers: state.updateCurrentRoomPlayers,
     clientSocket: state.clientSocket,
     isAdmin: state.isAdmin,
-    updateIsAdmin: state.updateIsAdmin
+    updateIsAdmin: state.updateIsAdmin,
+    setGameResults: state.setGameResults,
+    showUserList: state.showUserList,
+    setShowUserList: state.setShowUserList
 }))
 
 
@@ -57,6 +67,8 @@ const OnlineGame = () => {
      }))
 
     let turnInterval = false
+
+    const navigate = useNavigate()
 
     const [grid, setGrid] = useState(false)
     const [initialPlays, setInitialPlays] = useState({
@@ -190,17 +202,33 @@ const OnlineGame = () => {
       }
     }
 
+    console.log(currentRoomPlayers)
+
+    console.log(playOrder)
+
     const eliminatePlayers = () => {
       if(playOrder){
-        playOrder.forEach(player => {
-          if(checkPlayerScore(player) == 0 && checkInitialPlays(player)){
-            if(!eliminated.includes(player)){
-              setEliminated(player)
+        playOrder.forEach((player) => {
+          const getUser = currentRoomPlayers.find(function(el){ return el.color.color == player } )
+          if(checkPlayerScore(player) == 0 || (getUser && getUser.status == 'offline') ){
+            if(checkInitialPlays(player)){
+              if(checkPlayerScore(player) == 0){
+                if(!eliminated.includes(player)){
+                  setEliminated(player)
+                }
+              }
+            }else{
+              if(getUser && getUser.status == 'offline'){
+                if(!eliminated.includes(player)){
+                  setEliminated(player)
+                }
+              }
             }
           }
         })
       }
     }
+    
 
 
     const checkFirstPlace = (player) => {
@@ -226,15 +254,20 @@ const OnlineGame = () => {
 
     // console.log(timer)
 
-    useEffect(() => {
-      if(timer < 15){
-        time = setTimeout(() => setTimer(prev => prev += 0.2), 200)
-        if(hasPlayed){
-          clearTimeout(time)
-        }
-        return () => clearTimeout(time)
+    
+    const emitTimeout = async () => {
+      try {
+          const data = {
+              player: userData,
+              room: currentRoom,
+              box: false,
+              turn: playOrder[playTurn]
+          }
+          clientSocket.emit('timeout', data)
+      } catch (error) {
+          throw error
       }
-    },[timer])
+  }
 
 
     const emitPlay = async (thisBox) => {
@@ -247,6 +280,22 @@ const OnlineGame = () => {
           }
           clientSocket.emit('play', data)
           return true
+      } catch (error) {
+          throw error
+      }
+  }
+
+
+  const emitElimination = async () => {
+      try {
+        const data = {
+            player: userData,
+            room: currentRoom,
+            box: false,
+            turn: playOrder[playTurn]
+        }
+        clientSocket.emit('elimination', data)
+        return true
       } catch (error) {
           throw error
       }
@@ -361,6 +410,84 @@ const OnlineGame = () => {
       }
     }
 
+    handleTimeout = (data) => {
+      if(!showLoader){
+        if(getPlayerTurn().playerID == data.player.playerID){
+          newAlert({
+            type: 'warning',
+            users: [ getPlayerTurn() ],
+            message: getPlayerTurn().playerID == userData.playerID? 'your time ran out' : `${getPlayerTurn().name}'s time ran out!`,
+            color: getPlayerTurn().color.color
+           })
+           cachingEvents(false, data.turn)
+           clearTimeout(changeTimout)
+           changeTimout =  setTimeout(() => {
+            setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+           }, 1200)
+        }else{
+          //cache event
+          cachingEvents('timeout', data.turn)
+        }
+      }else{
+
+      }
+    }
+
+    handlePlayerDisconnect = (data) => {
+      if(data.action == 'left'){
+        // console.log(data)
+        updateCurrentRoom(data.room)
+        updateCurrentRoomPlayers(data.players)
+        if(data.player.playerID == userData.playerID){
+            // setLoading(prev => false)
+            updateUserData(data.player)
+            newAlert({
+                type: data.action == 'joined'? 'success' : 'error',
+                users: [ data.user ],
+                message: `you ${ data.action }`,
+                color: data.action == 'joined'? 'green' : 'red'
+            })
+        }else{
+            newAlert({
+                type: data.action == 'joined'? 'success' : 'error',
+                users: [ data.player ],
+                message: `${ data.player.name } ${ data.action }`,
+                color: data.action == 'joined'? 'green' : 'red'
+            })
+        }
+        updateIsAdmin(data.players[0].playerID == userData.playerID? true : false)
+        console.log(getPlayerTurn())
+        if(getPlayerTurn().playerID == data.player.playerID){
+        const disconnectTimeout =  setTimeout(() => {
+            setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+            clearTimeout(disconnectTimeout)
+          }, 1000)
+        }
+      }
+    }
+
+    handleResults = (data) => {
+      console.log('hanlde')
+      setTimeout(() => {
+        newAlert({
+          type: 'warning',
+          users: [  ],
+          message: 'the game has finished',
+          color: 'yellow'
+      })
+      setTimeout(() => {
+        setGameResults(data.results)
+        console.log(data.results)
+        clientSocket.off('ended')
+        clientSocket.off('users')
+        clientSocket.off('play')
+        clientSocket.emit('leave', 'leaving')
+        clientSocket.off('timeout')
+        navigate(`/game/results/${ currentRoom.roomID }`)
+      }, 1000)
+      }, 2000)
+    }
+
      const playLogic = (box) => {
             console.log(box)
             const thisBox = boxes.find(function(el){
@@ -396,29 +523,115 @@ const OnlineGame = () => {
                 }
         }
 
+        useEffect(() => {
+          if(timer < 15){
+              // time = setTimeout(() => setTimer(prev => prev += 0.2), 200)
+              if(hasPlayed){
+                clearTimeout(time)
+              }
+              return () => clearTimeout(time)
+          }else{
+              if(getPlayerTurn() && getPlayerTurn().playerID == userData.playerID){
+                  // emitTimeout().then(() => {
+  
+                  // }).catch(() => {
+  
+                  // })
+                  // console.log('timeout')
+              }
+          }
+        },[timer])
+
+        console.log(currentRoom)
+
+     handleEnded = (msg) => {
+      setTimeout(() => {
+        newAlert({
+          type: 'warning',
+          users: [  ],
+          message: msg,
+          color: 'yellow'
+      })
+      setTimeout(() => {
+        clientSocket.off('ended')
+        clientSocket.off('users')
+        clientSocket.off('play')
+        clientSocket.emit('leave', 'leaving')
+        clientSocket.off('timeout')
+        navigate(`/ended/${ currentRoom.roomID }`)
+      }, 1000)
+      }, 2000)
+    }
+
+    
 
     useEffect(() => {
+      if(currentRoomPlayers[0].playerID == userData.playerID){
+        if(eliminated.length == currentRoomPlayers.length){
+          clientSocket.emit('resultEnd', {
+            room: currentRoom,
+            eliminated: eliminated
+          })
+        }
+      }else{
+
+      }
+    }, [eliminated])
+
+    useEffect(() => {
+      clearTimeout(changeTimout)
       if(gameData){
         sessionStorage.removeItem('lastPlay')
         if(getPlayerTurn().status == 'online'){
           setHasPlayed(prev => false)
-        if(turnInterval){
-          clearInterval(turnInterval)
+          if(turnInterval){
+            clearInterval(turnInterval)
+          }
+
+          eliminatePlayers()
+        if(checkInitialPlays(playOrder[playTurn])){
+          if(checkFirstPlace(playOrder[playTurn])){
+            if(!eliminated.includes(playOrder[playTurn])){
+              setEliminated(playOrder[playTurn])
+              // setGameEnded(prev => true)
+            }else{
+              // setGameEnded(prev => true)
+            }
+          }
         }
 
         if(showLoader == false){
           // setTimer(prev => 0)
-          newAlert({
-            type: 'turn',
-            users: [ getPlayerTurn() ],
-            message: getPlayerTurn().playerID == userData.playerID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
-            color: getPlayerTurn().color.color
-        })
-        if(getCachedEvent(gameData.playOrder[playTurn]).box){
-          playLogic(getCachedEvent(gameData.playOrder[playTurn]).box)
-          cachingEvents(false, gameData.playOrder[playTurn])
-        }
-        }else{
+          
+          // if(getPlayerTurn().playerID == userData.playerID){
+          //   setTimer(prev => 0)
+          // }
+            newAlert({
+              type: 'turn',
+              users: [ getPlayerTurn() ],
+              message: getPlayerTurn().playerID == userData.playerID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
+              color: getPlayerTurn().color.color
+          })
+
+          if(getCachedEvent(gameData.playOrder[playTurn]).box){
+            if(getCachedEvent(gameData.playOrder[playTurn]).box == 'timeout'){
+              // playLogic(getCachedEvent(gameData.playOrder[playTurn]).box)
+              newAlert({
+                type: 'warning',
+                users: [ getPlayerTurn() ],
+                message: getPlayerTurn().playerID == userData.playerID? 'your time ran out' : `${getPlayerTurn().name}'s time ran out!`,
+                color: getPlayerTurn().color.color
+               })
+               cachingEvents(false, data.turn)
+                changeTimout = setTimeout(() => {
+                  setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+                }, 1200)
+            }else{
+              playLogic(getCachedEvent(gameData.playOrder[playTurn]).box)
+            }
+           
+            cachingEvents(false, gameData.playOrder[playTurn])
+          }
 
         }
 
@@ -429,6 +642,7 @@ const OnlineGame = () => {
             if(sessionStorage.getItem('lastPlay')){
               const diff = Date.now() - JSON.parse(sessionStorage.getItem('lastPlay')).timestamp
               if(diff > 1500){
+                console.log(playerCount.count - 1)
                 setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
                 clearInterval(turnInterval)
               }
@@ -436,7 +650,7 @@ const OnlineGame = () => {
           }, 1000)
         }
         }else{
-          
+          setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
         }
       }
     }, [playTurn])
@@ -449,6 +663,10 @@ const OnlineGame = () => {
           message: getPlayerTurn().playerID == userData.playerID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
           color: getPlayerTurn().color.color
         })
+        if(getPlayerTurn().playerID == userData.playerID){
+          setTimer(prev => 0)
+          }
+
         if(getCachedEvent(gameData.playOrder[playTurn]).box){
           playLogic(getCachedEvent(gameData.playOrder[playTurn]).box)
           cachingEvents(false, gameData.playOrder[playTurn])
@@ -488,6 +706,8 @@ const OnlineGame = () => {
       }
   }, [])
 
+  // console.log('user', getPlayerTurn(), playTurn , userData.playerID)
+
     return (
       <>
         {
@@ -501,9 +721,14 @@ const OnlineGame = () => {
                         showLoader ? (
                             <Loader setLoader = { setShowLoader } firstPlay = { playOrder.length > 0 ? playOrder[0] : false } playerCount = { playerCount.count }/>
                         ) : (
-                            <></>
+                          <>
+                            <GameHeading color = { playOrder[playTurn] } players = { currentRoomPlayers } timer = { timer } isTurn = { false } />
+                        </>
                         )
                     }
+                    <OnClickOutside currentState={ showUserList } setState={ setShowUserList }>
+                      <UserList />
+                    </OnClickOutside>
                 </div>
                 {
                       gameEnded? (
@@ -523,5 +748,5 @@ const OnlineGame = () => {
     )
 }
 
-export {boxClickOnline, handlePlay }
+export {boxClickOnline, handlePlay, handleEnded, handleResults, handlePlayerDisconnect, handleTimeout }
 export default OnlineGame

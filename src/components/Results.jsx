@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import '../styles/results.css'
 
-const Results = ({ eliminated, twoVtwo }) => {
+const Results = ({ eliminated, twoVtwo, online }) => {
     const [results, setResults] = useState(false)
     const [fade, setFade] = useState(true)
     const resultsRef = useRef(false)
@@ -31,11 +31,21 @@ const Results = ({ eliminated, twoVtwo }) => {
                 show: false
              }))
         }else{
-            dummyResults =  dummyResults.map((el) => ({
-                player: twoVtwo? el.player : el,
-                partner: twoVtwo? el.partner : false,
-                show: false
-             })).reverse()
+            if(online){
+                dummyResults =  dummyResults.map((el) => ({
+                    player: el.color.color,
+                    playerID: el.playerID,
+                    playerName: el.name,
+                    partner: twoVtwo? el.partner : false,
+                    show: false
+                 }))
+            }else{
+                dummyResults =  dummyResults.map((el) => ({
+                    player: twoVtwo? el.player : el,
+                    partner: twoVtwo? el.partner : false,
+                    show: false
+                 })).reverse()
+            }
         }
         console.log(dummyResults)
         setResults(prev => dummyResults)
@@ -55,7 +65,7 @@ const Results = ({ eliminated, twoVtwo }) => {
         <>
             {
                 results? (
-                    <div className={`results ${fade? 'fade': ''}`}>
+                    <div className={`results ${ online? 'online' : '' } ${fade? 'fade': ''}`}>
                         <div className={`results-grid player${eliminated.length}mode`} ref={ resultsRef }> 
                             {
                                 results.map((elem, index) => (
@@ -63,13 +73,30 @@ const Results = ({ eliminated, twoVtwo }) => {
                                         <div className={`position ${ twoVtwo? 'twoVtwo': '' }`}>
                                             <h5>{index + 1}{ getPrefix(index + 1) }</h5>
                                         </div>
+                                        {
+                                            online? (
+                                                <p className={`result-p-name`}>{ elem.playerName }</p>
+                                            ):(
+                                                <></>
+                                            )
+                                        }
                                     </div>
                                 ))
                             }
                         </div>
                         <div className="results-actions">
-                            <button>Restart Game</button>
-                            <button>End Game</button>
+                            {
+                                !online? (
+                                    <>
+                                          <button>Restart Game</button>
+                                          <button>End Game</button>
+                                    </>
+                                ):(
+                                    <>
+                                          <button>Leave Game</button>
+                                    </>
+                                )
+                            }
                         </div>
                     </div>
                 ):(

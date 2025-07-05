@@ -21,6 +21,8 @@ import Alerts from './components/Alerts.jsx'
 import OnlineGame from './pages/Game/OnlineGame.jsx'
 import Cookies from 'js-cookie'
 import Events from './utils/online/Events.jsx'
+import EndedGame from './pages/Ended.jsx'
+import OnlineResults from './pages/OnlineResults.jsx'
 
 
 
@@ -91,6 +93,8 @@ const { clientSocket } = useAuthStore((state) => ({
              <Route path='/options/online/8794' element={ <OnlineForm /> }/>
              <Route path='/game/lobby/:roomID' element={ <Lobby /> }/>
              <Route path='/joinroom' element={ <OnlineForm /> }/>
+             <Route path='/ended/:roomId' element={ <EndedGame /> }/>
+             <Route path='/game/results/:roomId' element={ <OnlineResults /> }/>
              <Route path='/server/pickup/2417' element = { <ServerWait /> } />
         </Routes>
       </div>

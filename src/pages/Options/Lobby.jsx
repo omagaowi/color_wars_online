@@ -16,6 +16,7 @@ import { newAlert } from '../../components/Alerts.jsx'
 
 let handleUserEvents
 let handleConnectErrors
+let handleEndedLobby
 let handleStartEvent 
 
 const Lobby = () => {
@@ -149,6 +150,25 @@ const Lobby = () => {
             throw error
         }
     }
+
+     handleEndedLobby = (msg) => {
+          setTimeout(() => {
+            newAlert({
+              type: 'warning',
+              users: [  ],
+              message: msg,
+              color: 'yellow'
+          })
+          setTimeout(() => {
+            clientSocket.off('ended')
+            clientSocket.off('users')
+            clientSocket.off('play')
+            clientSocket.emit('leave', 'leaving')
+            clientSocket.off('timeout')
+            navigate(`/ended/${ currentRoom.roomID }`)
+          }, 1000)
+          }, 2000)
+        }
 
 
     useEffect(() => {
@@ -317,7 +337,7 @@ const Lobby = () => {
                                                                                     startGame(data.boxes).then(result => {
 
                                                                                     }).catch(error => {
-                                                                                        etStartGameLoading(false)
+                                                                                        setStartGameLoading(false)
                                                                                     })
                                                                                 }).catch(error => {
 
@@ -338,8 +358,13 @@ const Lobby = () => {
                                                                         )
                                                                     }</>
                                                                 </button>
-                                                    <button>2 v 2 Game</button>
-                                                    <button>End Game</button>
+                                                    {/* <button>2 v 2 Game</button> */}
+                                                    <button onClick={ () => {
+                                                        clientSocket.emit('endGame', {
+                                                            room: currentRoom,
+                                                            player: userData
+                                                        })
+                                                    } }>End Game</button>
                                                             </>
                                                         ):(
                                                             <>
@@ -358,5 +383,5 @@ const Lobby = () => {
         </div>
     )
 }
-export { handleUserEvents, handleConnectErrors, handleStartEvent }
+export { handleUserEvents, handleEndedLobby, handleConnectErrors, handleStartEvent }
 export default Lobby

@@ -85,83 +85,83 @@ const { show, alert, setShow, setAlert, timeout, updateTimeout } = alertStore((s
       //   console.log('you have been disconnected')
       // })
 
-      clientSocket.on('play', (data) => {
-          playLogic(data.box)
-          setPlayLoading(false)
-      })
+    //   clientSocket.on('play', (data) => {
+    //       playLogic(data.box)
+    //       setPlayLoading(false)
+    //   })
 
-      const userPresenceAlerts = (data) => {
-        if(data.user.userID == JSON.parse(Cookies.get('userData')).userID){
-          updateUserData({...data.user, status: 'online'})
-          updateCurrentRoom(data.room)
-          setShow(false)
-          clearTimeout(timeout)
-           updateTimeout( setTimeout(() => {
-               setAlert({
-                   type: data.action == 'joined'? 'success' : 'error',
-                   users: [ data.user ],
-                   message: `you ${data.action}!`,
-                     color: data.action == 'joined'? 'green' : 'red'
-               })
-               setTimeout(() => {
-                   setShow(true)
-               }, 200)
-           }, 100))
-       }else{
-           setShow(false)
-           clearTimeout(timeout)
-           updateTimeout(
-               setTimeout(() => {
-                   setAlert({
-                       type: data.action == 'joined'? 'success' : 'error',
-                       users: [ data.user ],
-                       message: `${data.user.name } ${data.action}!`,
-                       color: data.action == 'joined'? 'green' : 'red'
-                   })
-                   setTimeout(() => {
-                       setShow(true)
-                   }, 200)
-               }, 100)
-           )
-       }
-      }
+    //   const userPresenceAlerts = (data) => {
+    //     if(data.user.userID == JSON.parse(Cookies.get('userData')).userID){
+    //       updateUserData({...data.user, status: 'online'})
+    //       updateCurrentRoom(data.room)
+    //       setShow(false)
+    //       clearTimeout(timeout)
+    //        updateTimeout( setTimeout(() => {
+    //            setAlert({
+    //                type: data.action == 'joined'? 'success' : 'error',
+    //                users: [ data.user ],
+    //                message: `you ${data.action}!`,
+    //                  color: data.action == 'joined'? 'green' : 'red'
+    //            })
+    //            setTimeout(() => {
+    //                setShow(true)
+    //            }, 200)
+    //        }, 100))
+    //    }else{
+    //        setShow(false)
+    //        clearTimeout(timeout)
+    //        updateTimeout(
+    //            setTimeout(() => {
+    //                setAlert({
+    //                    type: data.action == 'joined'? 'success' : 'error',
+    //                    users: [ data.user ],
+    //                    message: `${data.user.name } ${data.action}!`,
+    //                    color: data.action == 'joined'? 'green' : 'red'
+    //                })
+    //                setTimeout(() => {
+    //                    setShow(true)
+    //                }, 200)
+    //            }, 100)
+    //        )
+    //    }
+    //   }
 
 
-      clientSocket.on('users', (data)=>{
-        const urlSplit = window.location.href.split('/')
-        if(urlSplit[4] == 'lobby'){ 
-          setLobbyLoading(false)
-          const dummyPlayers = data.room.users.filter(function(player){
-            return player.status == 'online'
-          }).map((player, index) => ({
-              ...player,
-              playerColor: colors[index],
-              me: userData.userID == player.userID? true : false,
-              admin: index == 0? true : false
-          }))
-          updateCurrentRoomPlayers(dummyPlayers)
-          userPresenceAlerts(data)
-        }else if(urlSplit[3] == 'online' && urlSplit[4] == 'game'){
-          console.log(data)
-          updateCurrentRoom(data.room)
-          updateCurrentRoomPlayers(data.room.users)
-          // updateGameData({...gameData, users: data.room.users })
-          userPresenceAlerts(data)
-        }
-      })
+    //   clientSocket.on('users', (data)=>{
+    //     const urlSplit = window.location.href.split('/')
+    //     if(urlSplit[4] == 'lobby'){ 
+    //       setLobbyLoading(false)
+    //       const dummyPlayers = data.room.users.filter(function(player){
+    //         return player.status == 'online'
+    //       }).map((player, index) => ({
+    //           ...player,
+    //           playerColor: colors[index],
+    //           me: userData.userID == player.userID? true : false,
+    //           admin: index == 0? true : false
+    //       }))
+    //       updateCurrentRoomPlayers(dummyPlayers)
+    //       userPresenceAlerts(data)
+    //     }else if(urlSplit[3] == 'online' && urlSplit[4] == 'game'){
+    //       console.log(data)
+    //       updateCurrentRoom(data.room)
+    //       updateCurrentRoomPlayers(data.room.users)
+    //       // updateGameData({...gameData, users: data.room.users })
+    //       userPresenceAlerts(data)
+    //     }
+    //   })
 
-      clientSocket.on('timeout', (data) => {
-          timeOutLogic(data)
-      })
+    //   clientSocket.on('timeout', (data) => {
+    //       timeOutLogic(data)
+    //   })
 
-      clientSocket.on('disconnectTimeout', ()=>{
+    //   clientSocket.on('disconnectTimeout', ()=>{
         
-      })
+    //   })
 
-      return () => {
-        clientSocket.off('play')
-        clientSocket.off('timeout')
-    }
+    //   return () => {
+    //     clientSocket.off('play')
+    //     clientSocket.off('timeout')
+    // }
     
   
   }, []);

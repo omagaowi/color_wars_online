@@ -35,6 +35,14 @@ const useAuthStore = create((set) => ({
     setLobbyLoading: (data) => set((state) => ({
         lobbyLoading: data
     })),
+    gameResults: [],
+    setGameResults: (data) => set((state) => ({
+        gameResults: data
+    })),
+    showUserList: false,
+    setShowUserList: (data) => set((state) => ({
+        showUserList: data
+    })),
 }))
 
 export { useAuthStore, rootURI }
