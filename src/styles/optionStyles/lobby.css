@@ -166,6 +166,10 @@
     cursor: pointer;
   background: #4e839a;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   outline: none;
   position: relative;
   color: #73bbd9;
@@ -210,6 +214,43 @@
     color: #2a4956;
     cursor: pointer;
     
+}
+
+.lobby-error{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.lobby-error svg{
+    width: 70px;
+    height: 70px;
+    margin-bottom: 10px;
+    color: #81cded;
+}
+
+.lobby-error h2{
+    color: #81cded;
+    font-size: 30px;
+}
+
+.lobby-error p{
+    color: #81cded;
+    font-size: 20px;
+}
+
+.lobby-error button{
+    width: 80px;
+    height: 35px;
+    cursor: pointer;
+  background: #4e839a;
+  border: none;
+  outline: none;
+  position: relative;
+  color: #73bbd9;
+  transition: all .3s;
+  margin-top: 10px;
 }
 
 @media screen and (max-width: 630px) {

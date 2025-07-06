@@ -36,6 +36,7 @@
    border-radius: 5px;
    display: flex;
    align-items: center;
+   flex-direction: column;
    justify-content: center;
 }
 
@@ -59,7 +60,8 @@
     transition: all .5s ease;
 }
 
-.results-player.show h5{
+.results-player.show h5,
+.results-player.show p{
     transform: translateY(0px);
     opacity: initial;
 }
@@ -169,6 +171,19 @@
     background: linear-gradient(45deg, rgb(62, 148, 62, .6) 49.5%, rgb(193, 150, 71, .6) 50.5%);
 }
 
+
+.results.online{
+    background: black;
+}
+
+.result-p-name{
+color: #fff;
+margin-top: 10px;
+font-weight: bold;
+transform: translateY(10px);
+opacity: 0;
+transition: all .10s ease;
+}
 
 
 

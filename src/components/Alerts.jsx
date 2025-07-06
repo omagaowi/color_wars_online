@@ -35,15 +35,31 @@ const getIcon = (type) => {
 }
 
 
-const Alerts = ({ alert, alertShow }) => {
+let newAlert
 
-    const {setShow, setAlert, show,  timeout, updateTimeout } = alertStore((state) => ({
+const Alerts = () => {
+
+    const {setShow, alert, alertShow, setAlert, show,  timeout, updateTimeout } = alertStore((state) => ({
         setShow: state.setShow,
+        alert: state.alert,
+        alertShow: state.alertShow,
         show: state.show,
         setAlert: state.setAlert,
         timeout: state.timeout,
         updateTimeout: state.updateTimeout
     }))
+
+
+    newAlert = (data) => {
+        setAlert(data)
+        setTimeout(() => {
+            setShow(true)
+        }, 200)
+        setTimeout(() => {
+            setShow(false)
+        }, 1800)
+    }
+    
 
     useEffect(() => {
         if(alertShow){
@@ -61,4 +77,6 @@ const Alerts = ({ alert, alertShow }) => {
     )
 }
 
+
+export { newAlert }
 export default Alerts

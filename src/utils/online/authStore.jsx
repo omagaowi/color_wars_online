@@ -5,8 +5,13 @@ import { io } from 'socket.io-client';
 const rootURI = 'http://localhost:4000'
 
 
+
 const useAuthStore = create((set) => ({
-    userData: Cookies.get('userData')? {...JSON.parse(Cookies.get('userData')), status: 'disconnected'} : false,
+    userData: localStorage.getItem('userData')? {...JSON.parse(localStorage.getItem('userData')), status: 'offline', room: {
+        roomID: false,
+        roomUID: false,
+        joined: false
+    }} : false,
     updateUserData: (data) => set((state) => ({
         userData: data
     })),
@@ -23,12 +28,20 @@ const useAuthStore = create((set) => ({
         clientSocket: data
     })),
     isAdmin: false,
-    updateisAdmin: (data) => set((state) => ({
+    updateIsAdmin: (data) => set((state) => ({
         isAdmin: data
     })),
     lobbyLoading: true,
     setLobbyLoading: (data) => set((state) => ({
         lobbyLoading: data
+    })),
+    gameResults: [],
+    setGameResults: (data) => set((state) => ({
+        gameResults: data
+    })),
+    showUserList: false,
+    setShowUserList: (data) => set((state) => ({
+        showUserList: data
     })),
 }))
 

@@ -8,7 +8,10 @@ import Cookies from 'js-cookie';
 import { alertStore } from '../../utils/online/otherStores.jsx'
 
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../../utils/online/authStore.jsx'
+import { rootURI, useAuthStore } from '../../utils/online/authStore.jsx'
+import { newAlert } from '../../components/Alerts.jsx'
+import useFetch from '../../utils/online/useFetch.jsx'
+import CircularLoader from '../../components/CircularLoader.jsx'
 
 const OnlineForm = () => {
 
@@ -16,13 +19,7 @@ const OnlineForm = () => {
         updateUserData: state.updateUserData
     }))
 
-    
-    const {setShow, setAlert, timeout, updateTimeout } = alertStore((state) => ({
-        setShow: state.setShow,
-        setAlert: state.setAlert,
-        timeout: state.timeout,
-        updateTimeout: state.updateTimeout
-    }))
+
 
     const [showRoom, setShowRoom] = useState(false)
     const [name, setName] = useState(false)
@@ -31,155 +28,138 @@ const OnlineForm = () => {
 
     const navigate = useNavigate()
 
-    const setCookie = (key, value) => {
-        Cookies.set(key, value);
-      };
-
-
 
     const RoomForm = () => {
         const [isCreateRoom, setIsCreateRoom] = useState(false)
         const [roomID, setRoomId] = useState(false)
         const roomIdRef = useRef(false)
 
-        const setUserData = async (user) => {
-            try {
-                await updateUserData(user)
-                return true
-            } catch (error) {
-                throw error
-            }
-        }
 
         const createRoom = (e) => {
             e.preventDefault()
-            const url = `${root}/createroom`
-            setLoading(prev => true)
-
-            const headers = {
-                'Content-Type': 'application/json'
+            setLoading(true)
+            const url = `${ rootURI }/room/create`
+            const body = {
+                roomID: roomID
             }
-
-
-            fetch(url, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({
-                    room: e.target.roomID.value
-                })
-            }).then(response => response.json()).then(({data: createRoomData, error: createRoomError}) =>{
-                // console.log(createRoomData, createRoomError)
-                setLoading(prev => false)
+            useFetch(url, body, false, 'post').then(({
+                data: createRoomData, error: createRoomError
+            })=>{
+                setLoading(false)
                 if(createRoomData){
-                    const user = {
+                    const newData = {
                         name: name,
-                        userID: `${name}_${Number(Date.now().toString().split('').splice(6, 5).join(''))}`,
-                        roomID: e.target.roomID.value
+                        playerID: !JSON.parse(localStorage.getItem('userData'))? crypto.randomUUID() : JSON.parse(localStorage.getItem('userData')).playerID,
+                        status: 'offline',
+                        room: {
+                            roomID: false,
+                            roomUID: false,
+                            joined: false
+                        }
                     }
-                    setCookie('userData', JSON.stringify(user))
-                    setUserData(user).then(() => {
-                        navigate(`/game/lobby/${e.target.roomID.value}`)
-                    }).catch((error) => {
-                        console.log(error)
-                    })
+                    updateUserData(newData)
+                    localStorage.setItem('userData', JSON.stringify(newData))
+                    navigate(`/game/lobby/${ createRoomData.roomID }`)
+                    // console.log(createRoomData)
                 }else{
-                    updateTimeout(setTimeout(() => {
-                        setAlert({
-                            type: 'error',
-                            users: [  ],
-                            message: `Error creating room!`,
-                            color: 'red'
-                        })
-                        setTimeout(() => {
-                            setShow(true)
-                        }, 200)
-                    }, 100))
+
                 }
-            }).catch(err => {
-                setLoading(prev => false)
-                updateTimeout(setTimeout(() => {
-                    setAlert({
+            }).catch(error => {
+                console.log(error)
+                setLoading(false)
+                if(error.response){
+                    newAlert({
                         type: 'error',
-                        users: [  ],
-                        message: `An error occured, check your connection!`,
+                        users: [],
+                        message: error.response.data,
                         color: 'red'
                     })
-                    setTimeout(() => {
-                        setShow(true)
-                    }, 200)
-                }, 100))
+                }else if(error.request){
+                    newAlert({
+                        type: 'error',
+                        users: [],
+                        message: 'An Error Occured!',
+                        color: 'red'
+                    })
+                }else{
+                    newAlert({
+                        type: 'error',
+                        users: [],
+                        message: 'Check your connection!',
+                        color: 'red'
+                    })
+                }
             })
         }
 
         const joinRoom = (e) => {
             e.preventDefault()
-            setLoading(prev => true)
-            const url = `${root}/joinroom`
-
-            const headers = {
-                'Content-Type': 'application/json'
-            }
-
-            if(e.target.roomID.value != ''){
-                fetch(url, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({
-                        room: e.target.roomID.value
-                    })
-                }).then(response => response.json()).then(({data: createRoomData, error: createRoomError}) =>{
-                    setLoading(prev => false)
+            const roomID = e.target.roomID.value
+            if(roomID){
+                const url = `${ rootURI }/room/join`
+                const body = {
+                    roomID: roomID
+                }
+                useFetch(url, body, false, 'post').then(({
+                    data: createRoomData, error: createRoomError
+                })=>{
+                    setLoading(false)
                     if(createRoomData){
-                        const user = {
+                        const newData = {
                             name: name,
-                            userID: `${name}_${Number(Date.now().toString().split('').splice(6, 5).join(''))}`,
-                            roomID: e.target.roomID.value
+                            playerID: !JSON.parse(localStorage.getItem('userData'))? crypto.randomUUID() : JSON.parse(localStorage.getItem('userData')).playerID,
+                            status: 'offline',
+                            room: {
+                                roomID: false,
+                                roomUID: false,
+                                joined: false
+                            }
                         }
-                        setCookie('userData', JSON.stringify(user))
-                        updateUserData(user)
-                        navigate(`/game/lobby/${e.target.roomID.value}`)
+                        updateUserData(newData)
+                        localStorage.setItem('userData', JSON.stringify(newData))
+                        navigate(`/game/lobby/${ createRoomData.roomID }`)
+                        // console.log(createRoomData)
                     }else{
-                        updateTimeout(setTimeout(() => {
-                            setAlert({
-                                type: 'error',
-                                users: [  ],
-                                message: createRoomError,
-                                color: 'red'
-                            })
-                            setTimeout(() => {
-                                setShow(true)
-                            }, 200)
-                        }, 100))
-                    }
-                }).catch(err => {
-                    setLoading(prev => false)
-                    updateTimeout(setTimeout(() => {
-                        setAlert({
+                        newAlert({
                             type: 'error',
-                            users: [  ],
-                            message: `An error occured, check your connection!`,
+                            users: [],
+                            message: 'An Error Occured!',
                             color: 'red'
                         })
-                        setTimeout(() => {
-                            setShow(true)
-                        }, 200)
-                    }, 100))
+                    }
+                }).catch(error => {
+                    setLoading(false)
+                    if(error.response){
+                        newAlert({
+                            type: 'error',
+                            users: [],
+                            message: error.response.data,
+                            color: 'red'
+                        })
+                    }else if(error.request){
+                        newAlert({
+                            type: 'error',
+                            users: [],
+                            message: 'An Error Occured!',
+                            color: 'red'
+                        })
+                    }else{
+                        newAlert({
+                            type: 'error',
+                            users: [],
+                            message: 'Check your connection!',
+                            color: 'red'
+                        })
+                    }
                 })
             }else{
-                setLoading(prev => false)
-                updateTimeout(setTimeout(() => {
-                    setAlert({
-                        type: 'error',
-                        users: [  ],
-                        message: `Enter a valid room ID!`,
-                        color: 'red'
-                    })
-                    setTimeout(() => {
-                        setShow(true)
-                    }, 200)
-                }, 100))
+                newAlert({
+                    type: 'error',
+                    users: [],
+                    message: 'Invalid Room ID',
+                    color: 'red'
+                })
             }
-            
         }
 
         return (
@@ -196,7 +176,7 @@ const OnlineForm = () => {
                     <div className="create-btn" style={ { backgroundColor: isCreateRoom? '#31515f' : 'transparent' } } title='Create Rooom' onClick={() => {
                         setIsCreateRoom(prev => prev? false : true)
                         if(!isCreateRoom){
-                                const newRoomID = Number(Date.now().toString().split('').splice(6, 5).join(''))
+                                const newRoomID = Number(Date.now().toString().split('').splice(5, 5).join(''))
                                 setRoomId(prev => newRoomID)
                                 roomIdRef.current.value = newRoomID
                                 roomIdRef.current.setAttribute('readonly', 'readonly')
@@ -211,11 +191,9 @@ const OnlineForm = () => {
                     </div>
                 </div>
                 <button style={{ pointerEvents: loading? 'none' : 'all' }}>
-                    <>
-                        {
-                            loading? (
-                                <LoaderRing customClass={ 'formLoader' }/>
-                            ):(
+                    {
+                        !loading? (
+                            <>
                                 <>
                                   {
                                     isCreateRoom? (
@@ -225,33 +203,31 @@ const OnlineForm = () => {
                                         )
                                     }
                                 </>
-                            )
-                        }
-                    </>
+                            </>
+                        ):(
+                            <>
+                                <CircularLoader size={ 30 } color='#95c1d4'/>
+                            </>
+                        )
+                    }
                 </button>
             </form>
         )
     }
 
     const NameForm = () => {
-
         const submitNameForm = (e) => {
             e.preventDefault()
             const player_name = e.target.player_name.value
             if(player_name != ''){
                 setName(prev => player_name)
             }else{
-                updateTimeout(setTimeout(() => {
-                    setAlert({
-                        type: 'error',
-                        users: [  ],
-                        message: `Enter a valid name!`,
-                        color: 'red'
-                    })
-                    setTimeout(() => {
-                        setShow(true)
-                    }, 200)
-                }, 100))
+                newAlert({
+                    type: 'error',
+                    users: [],
+                    message: 'Enter a valid name!',
+                    color: 'red'
+                })
                 // setError(prev => 'Enter name!!')
             }
         }

@@ -1,77 +1,91 @@
-import { useEffect } from "react"
-import Grid from "../../components/GridArea.jsx"
-import { useGridStore } from "../../utils/mainStore.js"
-import { generateGrid } from "../../utils/generateGrid.js"
-import { gameDataStore, alertStore } from "../../utils/online/otherStores.jsx"
-import { useState } from "react"
-import Loader from "../../components/Loader.jsx"
-import { useMenuStore } from "../../utils/mainStore.js"
-import { useAuthStore } from "../../utils/online/authStore.jsx"
-import GameHeading from "../../components/GameHeading.jsx"
+import { useEffect, useState } from 'react'
+import Grid from '../../components/GridArea.jsx'
+import Loader from '../../components/Loader.jsx'
+import '../../styles/gameStyles/gameStyles.css'
+import { generateGrid } from '../../utils/generateGrid.js'
 
 
+import { useMenuStore, useGridStore, useEliminatedStore } from '../../utils/mainStore.js'
+import Results from '../../components/Results.jsx'
+import GameError from '../../components/GameError.jsx'
+import GameHeading from '../../components/GameHeading.jsx'
+import { gameDataStore } from '../../utils/online/otherStores.jsx'
+import { useAuthStore } from '../../utils/online/authStore.jsx'
+import { newAlert } from '../../components/Alerts.jsx'
+import UserList from '../../components/UserList.jsx'
+import OnClickOutside from '../../components/OnClickOutside.jsx'
+import { useNavigate } from 'react-router-dom'
+
+// let boxClick
 let boxClickOnline
-let playLogic
-let timeOutLogic
-let disconnectTimer
+let handlePlay
+let handlePlayerDisconnect
+let handleTimeout
+let changeTimout
+let handleEnded
+let handleResults
 
 const OnlineGame = () => {
 
-    const { userData, updateUserData, currentRoom, currentRoomPlayers, updateCurrentRoomPlayers, updateCurrentRoom, clientSocket, isAdmin, updateisAdmin } = useAuthStore((state) => ({
-        userData: state.userData,
-        updateUserData: state.updateUserData,
-        currentRoom: state.currentRoom,
-        updateCurrentRoom: state.updateCurrentRoom,
-        currentRoomPlayers: state.currentRoomPlayers,
-        updateCurrentRoomPlayers: state.updateCurrentRoomPlayers,
-        clientSocket: state.clientSocket,
-        isAdmin: state.isAdmin,
-        updateisAdmin: state.updateisAdmin
-    }))
-
-    const [playOrder, setPlayOrder] = useState([])
-    const [showLoader, setShowLoader] = useState(true)
-    const [grid, setGrid] = useState(false)
-    const [playTurn, setPlayTurn] = useState(0)
-    const { gameData, updateGameData, setPlayLoading} = gameDataStore((state) => ({
-        gameData: state.gameData,
-        updateGameData: state.updateGameData,
-        setPlayLoading: state.setPlayLoading
-    }))
-    const [hasPlayed, setHasPlayed] = useState(false)
-    const [timer, setTimer] = useState(0)
-    let time
-
-    const { mode, setMode, playerCount, setPlayerCount} = useMenuStore((state) => ({ 
+    const { mode, setMode , playerCount, setPlayerCount} = useMenuStore((state) => ({ 
         mode: state.mode,
         setMode: state.setMode,
         playerCount: state.playerCount,
         setPlayerCount: state.setPlayerCount
     }))  
 
+
     const { boxes, setBoxes } = useGridStore((state) => ({
         boxes: state.boxes,
         setBoxes: state.setBoxes
-    })) 
-
-    const { show, alert, setShow, setAlert, timeout, updateTimeout } = alertStore((state) => ({
-        alert: state.alert,
-        show: state.show,
-        setShow: state.setShow,
-        setAlert: state.setAlert,
-        timeout: state.timeout,
-        updateTimeout: state.updateTimeout
     }))
+
+    const { gameData, updateGameData } = gameDataStore((state) => ({
+      gameData: state.gameData,
+      updateGameData: state.updateGameData
+  }))
+
+  const { userData, updateUserData, isAdmin, setGameResults, showUserList, setShowUserList, updateIsAdmin, clientSocket, currentRoom, updateCurrentRoom, currentRoomPlayers, updateCurrentRoomPlayers } = useAuthStore((state) => ({
+    userData: state.userData,
+    updateUserData: state.updateUserData,
+    currentRoom: state.currentRoom,
+    currentRoomPlayers: state.currentRoomPlayers,
+    updateCurrentRoom: state.updateCurrentRoom,
+    updateCurrentRoomPlayers: state.updateCurrentRoomPlayers,
+    clientSocket: state.clientSocket,
+    isAdmin: state.isAdmin,
+    updateIsAdmin: state.updateIsAdmin,
+    setGameResults: state.setGameResults,
+    showUserList: state.showUserList,
+    setShowUserList: state.setShowUserList
+}))
+
+
+     const { eliminated, setEliminated } = useEliminatedStore((state) => ({
+      eliminated: state.eliminated,
+      setEliminated: state.setEliminated
+     }))
 
     let turnInterval = false
 
-    const [initialPlays, setInitialPlays] = useState({
-        blue: false,
-        red: false,
-        green: false,
-        yellow: false,
-    })
+    const navigate = useNavigate()
 
+    const [grid, setGrid] = useState(false)
+    const [initialPlays, setInitialPlays] = useState({
+      blue: false,
+      red: false,
+      green: false,
+      yellow: false,
+    })
+    const [playOrder, setPlayOrder] = useState([])
+    const [showLoader, setShowLoader] = useState(true)
+    const [playTurn, setPlayTurn] = useState(0)
+    const [hasPlayed, setHasPlayed] = useState(false)
+    const [gameEnded, setGameEnded] = useState(false)
+    const [timer, setTimer] = useState(0)
+    let time
+
+    // console.log(playOrder, grid)
 
     const determineRebound = (row, columnNo) => {
         const rebounds = [
@@ -95,6 +109,15 @@ const OnlineGame = () => {
         return rebounds;
     }
 
+    const getPlayerTurn = () => {
+      // console.log(currentRoom)
+      console.log(currentRoomPlayers)
+      const player = currentRoomPlayers.find(function(el){
+          return el.color.color == gameData.playOrder[playTurn] 
+      })
+      // console.log(gameData)
+      return player
+  }
 
     const checkInitialPlays = (player) => {
         if(player == 'blue'){
@@ -123,8 +146,8 @@ const OnlineGame = () => {
           dummyPlays.yellow = true
           setInitialPlays(prev => dummyPlays)
         }
-    }
-
+      }
+    
 
     const chosen = (rowNo, columnNo, index, player, rootCell) => {
         // console.log(rowNo, columnNo)
@@ -170,290 +193,560 @@ const OnlineGame = () => {
         
     }
 
-    const emitPlay = async (thisBox) => {
-        try {
-            const data = {
-                player: userData,
-                room: currentRoom,
-                box: thisBox,
-                currentGrid: boxes,
-                turn: playOrder[playTurn]
-            }
-            clientSocket.emit('play', data)
-            return true
-        } catch (error) {
-            throw error
-        }
-    }
-
-    const emitTimeout = async () => {
-        try {
-            const data = {
-                player: userData,
-                room: currentRoom,
-                box: false,
-                turn: playOrder[playTurn]
-            }
-            clientSocket.emit('timeout', data)
-        } catch (error) {
-            throw error
-        }
-    }
-
-    const getPlayerTurn = () => {
-        console.log(currentRoom)
-        const player = currentRoom.users.find(function(el){
-            return el.playerColor.color == gameData.gameInfo.playOrder[playTurn] 
+    const checkPlayerScore = (player) => {
+      if(boxes){
+        const playerBoxes = boxes.filter(function(el){
+          return el.player.includes(player)
         })
-        console.log(gameData)
-        return player
+        return playerBoxes.length
+      }
+    }
+
+    console.log(currentRoomPlayers)
+
+    console.log(playOrder)
+
+    const eliminatePlayers = () => {
+      if(playOrder){
+        playOrder.forEach((player) => {
+          const getUser = currentRoomPlayers.find(function(el){ return el.color.color == player } )
+          if(checkPlayerScore(player) == 0 || (getUser && getUser.status == 'offline') ){
+            if(checkInitialPlays(player)){
+              if(checkPlayerScore(player) == 0){
+                if(!eliminated.includes(player)){
+                  setEliminated(player)
+                }
+              }
+            }else{
+              if(getUser && getUser.status == 'offline'){
+                if(!eliminated.includes(player)){
+                  setEliminated(player)
+                }
+              }
+            }
+          }
+        })
+      }
     }
     
 
-    boxClickOnline = (thisBox) => {
-        if(getPlayerTurn().userID == userData.userID){
-            const player = playOrder[playTurn]
-            if(thisBox.player.length == 0){
-                if(checkInitialPlays(player)){
-                    	
-                }else{
-                    setHasPlayed(prev => true)
-                    setPlayLoading(true)
-                    emitPlay(thisBox).then(() => {
-                        
-                    }).catch((err) => {
-                        setHasPlayed(prev => false)
-                        setPlayLoading(false)
-                    })
-                }
-            }else{
-                if(thisBox.player.includes(playOrder[playTurn])){
-                   //play
-                   setHasPlayed(prev => true)
-                   setPlayLoading(true)
-                   emitPlay(thisBox).then(() => {
-                        setPlayLoading(false)
-                   }).catch((err) => {
-                         setHasPlayed(prev => false)
-                        setPlayLoading(false)
-                   })
-                }
-            }
+
+    const checkFirstPlace = (player) => {
+      const playerBoxes = boxes.filter(function(el){
+        return el.player.includes(player)
+      })
+      const occupiedBoxes =  boxes.filter(function(el){
+        return el.player.length != 0
+      })
+      if(playerBoxes.length == occupiedBoxes.length){
+        return true
+      }else{
+        return false
+      }
+    }
+
+
+
+    // const gameTimer = setInterval(() => {
+    //   setTimer(prev => prev += 1)
+    //   clearInterval(gameTimer)
+    // }, 1000)
+
+    // console.log(timer)
+
+    
+    const emitTimeout = async () => {
+      try {
+          const data = {
+              player: userData,
+              room: currentRoom,
+              box: false,
+              turn: playOrder[playTurn]
+          }
+          clientSocket.emit('timeout', data)
+      } catch (error) {
+          throw error
+      }
+  }
+
+
+    const emitPlay = async (thisBox) => {
+      try {
+          const data = {
+              player: userData,
+              room: currentRoom,
+              box: thisBox,
+              turn: playOrder[playTurn]
+          }
+          clientSocket.emit('play', data)
+          return true
+      } catch (error) {
+          throw error
+      }
+  }
+
+
+  const emitElimination = async () => {
+      try {
+        const data = {
+            player: userData,
+            room: currentRoom,
+            box: false,
+            turn: playOrder[playTurn]
         }
-    }
-
-
-    playLogic = (box) => {
-        console.log(box)
-        const thisBox = boxes.find(function(el){
-            return el.row == box.row && el.column == box.column
-        })
-            const player = playOrder[playTurn]
-            if(thisBox.player.length == 0){
-              if(checkInitialPlays(player)){
-               
-              }else{
-                const dummyBoxes = boxes
-                const thisIndex = dummyBoxes.indexOf(thisBox)
-                dummyBoxes[thisIndex].player = [player]
-                dummyBoxes[thisIndex].circles = 3
-                setBoxes(dummyBoxes)
-                removeInitialPlays(player)
-                setTimeout(() => {
-                  chosen(thisBox.row, thisBox.column, 0, player, false)
-                }, 700);
-              }
-            }else{
-              if(thisBox.player.includes(playOrder[playTurn])){
-                  const dummyBoxes = boxes
-                  const thisIndex = dummyBoxes.indexOf(thisBox)
-                  dummyBoxes[thisIndex].player = [player]
-                  dummyBoxes[thisIndex].circles += 1;
-                //   console.log(dummyBoxes[thisIndex].circles += 1)
-                  setBoxes(dummyBoxes)
-                  setTimeout(() => {
-                    chosen(thisBox.row, thisBox.column, 0, player, false)
-                  }, 700);
-              }
-            }
-    }
-
-    timeOutLogic = (data) => {
-        updateTimeout(setTimeout(() => {
-            setAlert({
-                type: 'warning',
-                users: [ getPlayerTurn() ],
-                message: getPlayerTurn().userID == userData.userID? 'time up!' : `${getPlayerTurn().name}'s time was up!`,
-                color: getPlayerTurn().playerColor.color
-            })
-            setTimeout(() => {
-                setShow(true)
-            }, 200)
-        }, 100))
-        setTimeout(() => {
-            setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
-        }, 1700);
-    }
+        clientSocket.emit('elimination', data)
+        return true
+      } catch (error) {
+          throw error
+      }
+  }
 
 
 
-    // boxClickOnline = (thisBox) => {
+    // boxClick = (thisBox) => {
     //     if(!hasPlayed){
-            
-    //     }
+    //         const player = playOrder[playTurn]
+    //         if(thisBox.player.length == 0){
+    //           if(checkInitialPlays(player)){
+               
+    //           }else{
+    //             const dummyBoxes = boxes
+    //             const thisIndex = dummyBoxes.indexOf(thisBox)
+    //             dummyBoxes[thisIndex].player = [player]
+    //             dummyBoxes[thisIndex].circles = 3
+    //             setBoxes(dummyBoxes)
+    //             removeInitialPlays(player)
+    //             setHasPlayed(prev => true)
+    //             setTimeout(() => {
+    //               chosen(thisBox.row, thisBox.column, 0, player, false)
+    //             }, 700);
+    //           }
+    //         }else{
+    //           if(thisBox.player.includes(playOrder[playTurn])){
+    //               const dummyBoxes = boxes
+    //               const thisIndex = dummyBoxes.indexOf(thisBox)
+    //               dummyBoxes[thisIndex].player = [player]
+    //               dummyBoxes[thisIndex].circles += 1;
+    //               setBoxes(dummyBoxes)
+    //               setHasPlayed(prev => true)
+    //               setTimeout(() => {
+    //                 chosen(thisBox.row, thisBox.column, 0, player, false)
+    //               }, 700);
+    //           }
+    //         }
+    //       }
     // }
 
 
-    useEffect(() => {
-        if(timer < 15){
-            time = setTimeout(() => setTimer(prev => prev += 0.2), 200)
-            if(hasPlayed){
-              clearTimeout(time)
-            }
-            return () => clearTimeout(time)
-        }else{
-            if(getPlayerTurn().userID == userData.userID){
-                emitTimeout().then(() => {
 
-                }).catch(() => {
 
-                })
-                console.log('timeout')
+     boxClickOnline = (thisBox) => {
+            if(getPlayerTurn().playerID == userData.playerID){
+                const player = playOrder[playTurn]
+                if(thisBox.player.length == 0){
+                    if(checkInitialPlays(player)){
+                          
+                    }else{
+                        setHasPlayed(prev => true)
+                        // setPlayLoading(true)
+                        emitPlay(thisBox).then(() => {
+                            
+                        }).catch((err) => {
+                            setHasPlayed(prev => false)
+                            // setPlayLoading(false)
+                        })
+                    }
+                }else{
+                    if(thisBox.player.includes(playOrder[playTurn])){
+                       //play
+                       setHasPlayed(prev => true)
+                      //  setPlayLoading(true)
+                       emitPlay(thisBox).then(() => {
+                            // setPlayLoading(false)
+                       }).catch((err) => {
+                             setHasPlayed(prev => false)
+                            // setPlayLoading(false)
+                       })
+                    }
+                }
             }
         }
-      },[timer])
 
 
+        const cachingEvents = (box, turn) => {
+          let cachedEvents = JSON.parse(localStorage.getItem('cachedEvents'))
+          const thisEvent = cachedEvents.find(function(el){
+            return el.color == turn
+          })
+          cachedEvents[cachedEvents.indexOf(thisEvent)].box = box
+          localStorage.setItem('cachedEvents', JSON.stringify(cachedEvents))
+          // console.log(cachedEvents)
+        }
 
+        const getCachedEvent = (turn) => {
+          const cachedEvents = JSON.parse(localStorage.getItem('cachedEvents'))
+          const thisEvent = cachedEvents.find(function(el){
+            return el.color == turn
+          })
+          return thisEvent
+        }
 
-      const emitDisconnectTimeout = async (data) => {
-        try {
-            await clientSocket.emit('disconnectTimeout', data)
-        } catch (error) {
-            throw error;
+    // console.log(eliminated)
+
+     handlePlay = (data) => {
+      // console.log(data)
+      // console.log(data.box)
+      if(!showLoader){
+        if(getPlayerTurn().playerID == data.player.playerID){
+          playLogic(data.box)
+          cachingEvents(false, data.turn)
+        }else{
+          //cache event
+          cachingEvents(data.box, data.turn)
+        }
+      }else{
+        //cache event
+        cachingEvents(data.box, data.turn)
+      }
+    }
+
+    handleTimeout = (data) => {
+      if(!showLoader){
+        if(getPlayerTurn().playerID == data.player.playerID){
+          newAlert({
+            type: 'warning',
+            users: [ getPlayerTurn() ],
+            message: getPlayerTurn().playerID == userData.playerID? 'your time ran out' : `${getPlayerTurn().name}'s time ran out!`,
+            color: getPlayerTurn().color.color
+           })
+           cachingEvents(false, data.turn)
+           clearTimeout(changeTimout)
+           changeTimout =  setTimeout(() => {
+            setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+           }, 1200)
+        }else{
+          //cache event
+          cachingEvents('timeout', data.turn)
+        }
+      }else{
+
+      }
+    }
+
+    handlePlayerDisconnect = (data) => {
+      if(data.action == 'left'){
+        // console.log(data)
+        updateCurrentRoom(data.room)
+        updateCurrentRoomPlayers(data.players)
+        if(data.player.playerID == userData.playerID){
+            // setLoading(prev => false)
+            updateUserData(data.player)
+            newAlert({
+                type: data.action == 'joined'? 'success' : 'error',
+                users: [ data.user ],
+                message: `you ${ data.action }`,
+                color: data.action == 'joined'? 'green' : 'red'
+            })
+        }else{
+            newAlert({
+                type: data.action == 'joined'? 'success' : 'error',
+                users: [ data.player ],
+                message: `${ data.player.name } ${ data.action }`,
+                color: data.action == 'joined'? 'green' : 'red'
+            })
+        }
+        updateIsAdmin(data.players[0].playerID == userData.playerID? true : false)
+        console.log(getPlayerTurn())
+        if(getPlayerTurn().playerID == data.player.playerID){
+        const disconnectTimeout =  setTimeout(() => {
+            setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+            clearTimeout(disconnectTimeout)
+          }, 1000)
         }
       }
+    }
 
-    
-    useEffect(() => {
-        sessionStorage.removeItem('lastPlay')
-        console.log(getPlayerTurn())
-        if(getPlayerTurn().status === 'disconnected'){
-            disconnectTimer = setTimeout(() => {
-                const data = {
-                    player: getPlayerTurn(),
-                    room: currentRoom,
-                    box: false,
-                    turn: playOrder[playTurn]
-                }
-               emitDisconnectTimeout(data).then(() => {
-                console.log('timeout')
-               }).catch((err) => {
+    handleResults = (data) => {
+      console.log('hanlde')
+      setTimeout(() => {
+        newAlert({
+          type: 'warning',
+          users: [  ],
+          message: 'the game has finished',
+          color: 'yellow'
+      })
+      setTimeout(() => {
+        setGameResults(data.results)
+        console.log(data.results)
+        clientSocket.off('ended')
+        clientSocket.off('users')
+        clientSocket.off('play')
+        clientSocket.emit('leave', 'leaving')
+        clientSocket.off('timeout')
+        navigate(`/game/results/${ currentRoom.roomID }`)
+      }, 1000)
+      }, 2000)
+    }
 
-               })
-               clearTimeout(disconnectTimer)
-            }, 15000)
-        }else if(getPlayerTurn().status === 'left'){
-
-        }else if(getPlayerTurn().status === 'online'){
-            if(showLoader == false){
-                updateTimeout(setTimeout(() => {
-                    setAlert({
-                        type: 'turn',
-                        users: [ getPlayerTurn() ],
-                        message: getPlayerTurn().userID == userData.userID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
-                        color: getPlayerTurn().playerColor.color
-                    })
+     const playLogic = (box) => {
+            console.log(box)
+            const thisBox = boxes.find(function(el){
+                return el.row == box.row && el.column == box.column
+            })
+                const player = playOrder[playTurn]
+                if(thisBox.player.length == 0){
+                  if(checkInitialPlays(player)){
+                   
+                  }else{
+                    const dummyBoxes = boxes
+                    const thisIndex = dummyBoxes.indexOf(thisBox)
+                    dummyBoxes[thisIndex].player = [player]
+                    dummyBoxes[thisIndex].circles = 3
+                    setBoxes(dummyBoxes)
+                    removeInitialPlays(player)
                     setTimeout(() => {
-                        setShow(true)
-                    }, 200)
-                }, 100))
-            }
-    
-            if(showLoader == false){
-                if(getPlayerTurn().userID == userData.userID){
-                    setTimer(prev => 0)
-                }
-            }
-    
-            setHasPlayed(prev => false)
-              turnInterval = setInterval(()=>{
-                if(sessionStorage.getItem('lastPlay')){
-                  const diff = Date.now() - JSON.parse(sessionStorage.getItem('lastPlay')).timestamp
-                  if(diff > 1500){
-                    setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
-                    clearInterval(turnInterval)
+                      chosen(thisBox.row, thisBox.column, 0, player, false)
+                    }, 700);
+                  }
+                }else{
+                  if(thisBox.player.includes(playOrder[playTurn])){
+                      const dummyBoxes = boxes
+                      const thisIndex = dummyBoxes.indexOf(thisBox)
+                      dummyBoxes[thisIndex].player = [player]
+                      dummyBoxes[thisIndex].circles += 1;
+                    //   console.log(dummyBoxes[thisIndex].circles += 1)
+                      setBoxes(dummyBoxes)
+                      setTimeout(() => {
+                        chosen(thisBox.row, thisBox.column, 0, player, false)
+                      }, 700);
                   }
                 }
-              }, 1000)
         }
+
+        useEffect(() => {
+          if(timer < 15){
+              // time = setTimeout(() => setTimer(prev => prev += 0.2), 200)
+              if(hasPlayed){
+                clearTimeout(time)
+              }
+              return () => clearTimeout(time)
+          }else{
+              if(getPlayerTurn() && getPlayerTurn().playerID == userData.playerID){
+                  // emitTimeout().then(() => {
+  
+                  // }).catch(() => {
+  
+                  // })
+                  // console.log('timeout')
+              }
+          }
+        },[timer])
+
+        console.log(currentRoom)
+
+     handleEnded = (msg) => {
+      setTimeout(() => {
+        newAlert({
+          type: 'warning',
+          users: [  ],
+          message: msg,
+          color: 'yellow'
+      })
+      setTimeout(() => {
+        clientSocket.off('ended')
+        clientSocket.off('users')
+        clientSocket.off('play')
+        clientSocket.emit('leave', 'leaving')
+        clientSocket.off('timeout')
+        navigate(`/ended/${ currentRoom.roomID }`)
+      }, 1000)
+      }, 2000)
+    }
+
+    
+
+    useEffect(() => {
+      if(currentRoomPlayers[0].playerID == userData.playerID){
+        if(eliminated.length == currentRoomPlayers.length){
+          clientSocket.emit('resultEnd', {
+            room: currentRoom,
+            eliminated: eliminated
+          })
+        }
+      }else{
+
+      }
+    }, [eliminated])
+
+    useEffect(() => {
+      clearTimeout(changeTimout)
+      if(gameData){
+        sessionStorage.removeItem('lastPlay')
+        if(getPlayerTurn().status == 'online'){
+          setHasPlayed(prev => false)
+          if(turnInterval){
+            clearInterval(turnInterval)
+          }
+
+          eliminatePlayers()
+        if(checkInitialPlays(playOrder[playTurn])){
+          if(checkFirstPlace(playOrder[playTurn])){
+            if(!eliminated.includes(playOrder[playTurn])){
+              setEliminated(playOrder[playTurn])
+              // setGameEnded(prev => true)
+            }else{
+              // setGameEnded(prev => true)
+            }
+          }
+        }
+
+        if(showLoader == false){
+          // setTimer(prev => 0)
+          
+          // if(getPlayerTurn().playerID == userData.playerID){
+          //   setTimer(prev => 0)
+          // }
+            newAlert({
+              type: 'turn',
+              users: [ getPlayerTurn() ],
+              message: getPlayerTurn().playerID == userData.playerID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
+              color: getPlayerTurn().color.color
+          })
+
+          if(getCachedEvent(gameData.playOrder[playTurn]).box){
+            if(getCachedEvent(gameData.playOrder[playTurn]).box == 'timeout'){
+              // playLogic(getCachedEvent(gameData.playOrder[playTurn]).box)
+              newAlert({
+                type: 'warning',
+                users: [ getPlayerTurn() ],
+                message: getPlayerTurn().playerID == userData.playerID? 'your time ran out' : `${getPlayerTurn().name}'s time ran out!`,
+                color: getPlayerTurn().color.color
+               })
+               cachingEvents(false, data.turn)
+                changeTimout = setTimeout(() => {
+                  setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+                }, 1200)
+            }else{
+              playLogic(getCachedEvent(gameData.playOrder[playTurn]).box)
+            }
+           
+            cachingEvents(false, gameData.playOrder[playTurn])
+          }
+
+        }
+
+        if(checkPlayerScore(playOrder[playTurn]) == 0 && checkInitialPlays(playOrder[playTurn])){
+          setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+        }else{
+          turnInterval = setInterval(()=>{
+            if(sessionStorage.getItem('lastPlay')){
+              const diff = Date.now() - JSON.parse(sessionStorage.getItem('lastPlay')).timestamp
+              if(diff > 1500){
+                console.log(playerCount.count - 1)
+                setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+                clearInterval(turnInterval)
+              }
+            }
+          }, 1000)
+        }
+        }else{
+          setPlayTurn(prev => prev >=  playerCount.count - 1? 0 : prev += 1)
+        }
+      }
     }, [playTurn])
 
     useEffect(() => {
-        if(showLoader == false){
+      if(!showLoader){
+        newAlert({
+          type: 'turn',
+          users: [ getPlayerTurn() ],
+          message: getPlayerTurn().playerID == userData.playerID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
+          color: getPlayerTurn().color.color
+        })
+        if(getPlayerTurn().playerID == userData.playerID){
           setTimer(prev => 0)
+          }
+
+        if(getCachedEvent(gameData.playOrder[playTurn]).box){
+          playLogic(getCachedEvent(gameData.playOrder[playTurn]).box)
+          cachingEvents(false, gameData.playOrder[playTurn])
         }
-      }, [showLoader])
+      }
+  }, [showLoader])
 
     useEffect(() => {
-        if(!showLoader){
-            updateTimeout(setTimeout(() => {
-                setAlert({
-                    type: 'turn',
-                    users: [ getPlayerTurn() ],
-                    message: getPlayerTurn().userID == userData.userID? 'your turn!' : `${getPlayerTurn().name}'s turn!`,
-                    color: getPlayerTurn().playerColor.color
-                })
-                setTimeout(() => {
-                    setShow(true)
-                }, 200)
-            }, 100))
-        }
-    }, [showLoader])
+      if(gameData){
+          localStorage.setItem('cachedEvents', JSON.stringify(
+            [
+              {
+                color: 'blue',
+                box: false
+              },
+              {
+                color: 'red',
+                box: false
+              },
+              {
+                color: 'green',
+                box: false
+              },
+              {
+                color: 'yellow',
+                box: false
+              },
+            ]
+          ))
+          setPlayOrder(gameData.playOrder)
+          setGrid(gameData.playGrid)
+          setMode('online')
+          setPlayerCount({
+              tvt: false,
+              count: gameData.playOrder.length
+          })
+      }
+  }, [])
 
-    useEffect(() => {
-        if(gameData){
-            setPlayOrder(gameData.gameInfo.playOrder)
-            setGrid(gameData.gameInfo.playGrid)
-            setMode('online')
-            setPlayerCount({
-                tvt: false,
-                count: gameData.gameInfo.playOrder.length
-            })
-        }
-    }, [])
+  // console.log('user', getPlayerTurn(), playTurn , userData.playerID)
 
     return (
-        <>
-            {
-                playerCount?(
-                    <div className={`game-container ${playOrder[playTurn]}`}>
-                        {
-                            boxes.length > 0? (
-                                <Grid grid = { grid }/>
-                            ):(
-                                <></>
-                            )
-                        }
-                        <>
-                        { 
-                            showLoader ? (
-                                <Loader setLoader = { setShowLoader } firstPlay = { playOrder.length > 0 ? playOrder[0] : false } playerCount = { playerCount }/>
-                            ) : (
-                                <>
-                                  <GameHeading color = { playOrder[playTurn] } players = { [] } timer = { timer } isTurn = { getPlayerTurn().userID == userData.userID } />
-                                </>
-                            )
-                        }
+      <>
+        {
+          playerCount && gameData ? (
+              <>
+                <div className={ `game-container ${ playOrder[playTurn] }` } style={ { position: gameEnded? 'fixed': 'relative' } }>
+                {/* <GameHeading color = { playOrder[playTurn] } players = { [] } timer = { timer }/> */}
+                    <Grid playTurn = { playTurn } playOrder = { playOrder } hasPlayed = { hasPlayed } initialPlays = { initialPlays }
+                    grid = { grid }/>
+                    { 
+                        showLoader ? (
+                            <Loader setLoader = { setShowLoader } firstPlay = { playOrder.length > 0 ? playOrder[0] : false } playerCount = { playerCount.count }/>
+                        ) : (
+                          <>
+                            <GameHeading color = { playOrder[playTurn] } players = { currentRoomPlayers } timer = { timer } isTurn = { false } />
                         </>
-                    </div>
-                ):(
-                    <></>
-                )
-            }
-        </>
+                        )
+                    }
+                    <OnClickOutside currentState={ showUserList } setState={ setShowUserList }>
+                      <UserList />
+                    </OnClickOutside>
+                </div>
+                {
+                      gameEnded? (
+                        <Results eliminated = { eliminated }/>
+                      ):(
+                        <></>
+                      )
+                }
+              </>
+          ):(
+            // <>{ timer }</>
+            <GameError />
+          )
+        }
+      </>
+
     )
 }
 
-export { boxClickOnline, playLogic, timeOutLogic}
+export {boxClickOnline, handlePlay, handleEnded, handleResults, handlePlayerDisconnect, handleTimeout }
 export default OnlineGame
