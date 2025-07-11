@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import Cookies from 'js-cookie';
 import { io } from 'socket.io-client';
 
-const rootURI = 'http://localhost:4000'
+// const rootURI = 'http://localhost:4000'
 
+const rootURI = import.meta.env.VITE_BASE_URL 
 
 
 const useAuthStore = create((set) => ({
