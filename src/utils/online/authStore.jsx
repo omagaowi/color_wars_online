@@ -40,9 +40,17 @@ const useAuthStore = create((set) => ({
     setGameResults: (data) => set((state) => ({
         gameResults: data
     })),
+    isConnected: false,
+    setIsConnected: (data) => set((state) => ({
+        isConnected: data
+    })),
     showUserList: false,
     setShowUserList: (data) => set((state) => ({
         showUserList: data
+    })),
+    showShare: false,
+    setShowShare: (data) => set((state) => ({
+        showShare: data
     })),
 }))
 
