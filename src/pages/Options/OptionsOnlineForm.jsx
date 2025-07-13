@@ -269,7 +269,7 @@ const OnlineForm = () => {
             setLoading(false);
             if (createRoomData) {
               const newData = {
-                name: name,
+                name: nameRef.current.value.toLowerCase(),
                 playerID: !JSON.parse(localStorage.getItem("userData"))
                   ? crypto.randomUUID()
                   : JSON.parse(localStorage.getItem("userData")).playerID,
