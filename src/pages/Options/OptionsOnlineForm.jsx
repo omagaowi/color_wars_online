@@ -52,7 +52,7 @@ const OnlineForm = () => {
           setLoading(false);
           if (createRoomData) {
             const newData = {
-              name: name.toLowerCase(),
+              name: name,
               playerID: !JSON.parse(localStorage.getItem("userData"))
                 ? crypto.randomUUID()
                 : JSON.parse(localStorage.getItem("userData")).playerID,
@@ -111,7 +111,7 @@ const OnlineForm = () => {
             setLoading(false);
             if (createRoomData) {
               const newData = {
-                name: name.toLowerCase(),
+                name: name,
                 playerID: !JSON.parse(localStorage.getItem("userData"))
                   ? crypto.randomUUID()
                   : JSON.parse(localStorage.getItem("userData")).playerID,
@@ -241,7 +241,7 @@ const OnlineForm = () => {
     const nameRef = useRef(false);
     const submitNameForm = (e) => {
       e.preventDefault();
-      const player_name = e.target.player_name.value.toLowerCase();
+      const player_name = e.target.player_name.value;
       if (player_name != "") {
         setName((prev) => player_name);
       } else {
@@ -269,7 +269,7 @@ const OnlineForm = () => {
             setLoading(false);
             if (createRoomData) {
               const newData = {
-                name: name.toLowerCase(),
+                name: name,
                 playerID: !JSON.parse(localStorage.getItem("userData"))
                   ? crypto.randomUUID()
                   : JSON.parse(localStorage.getItem("userData")).playerID,
@@ -294,6 +294,7 @@ const OnlineForm = () => {
             }
           })
           .catch((error) => {
+            console.log(error)
             setLoading(false);
             if (error.response) {
               newAlert({
