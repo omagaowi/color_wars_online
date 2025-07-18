@@ -28,6 +28,7 @@ const Events = (socket) => {
     handleStartEvent(data);
   });
   socket.on("play", (data) => {
+    console.log('play')
     handlePlay(data);
   });
 
