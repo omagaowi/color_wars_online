@@ -255,9 +255,8 @@ const OnlineForm = () => {
       }
     };
 
-    const joinRoom = (room) => {
+    const joinRoom = (e, room) => {
       // e.preventDefault()
-
       const roomID = room;
       if (roomID) {
         const url = `${rootURI}/room/join`;
@@ -269,7 +268,7 @@ const OnlineForm = () => {
             setLoading(false);
             if (createRoomData) {
               const newData = {
-                name: nameRef.current.value.toLowerCase(),
+                name: e.target.player_name.value,
                 playerID: !JSON.parse(localStorage.getItem("userData"))
                   ? crypto.randomUUID()
                   : JSON.parse(localStorage.getItem("userData")).playerID,
@@ -345,7 +344,7 @@ const OnlineForm = () => {
         onSubmit={(e) => {
           if (query.get("ID")) {
             e.preventDefault();
-            joinRoom(query.get("ID"));
+            joinRoom(e, query.get("ID"));
           } else {
             submitNameForm(e);
           }
