@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import "../styles/optionStyles/server.css";
 import { useAuthStore } from "../utils/online/authStore";
+import { useNavigate } from "react-router-dom";
 
 const EndedGame = () => {
   const {
@@ -44,12 +45,16 @@ const EndedGame = () => {
     });
   }, []);
 
+  const navigate = useNavigate()
+
   return (
     <div className="server-wait-container">
       <h1>This Game has Ended!!</h1>
       <p>Thank you for playing. Try joining another game</p>
       <div className="buttons">
-        <button>New Game</button>
+        <button onClick={() => {
+          navigate('/joinroom')
+        }}>New Game</button>
       </div>
     </div>
   );

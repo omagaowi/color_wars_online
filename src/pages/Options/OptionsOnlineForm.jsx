@@ -258,6 +258,7 @@ const OnlineForm = () => {
 
     const joinRoom = (e, room) => {
       // e.preventDefault()
+      setLoading(true)
       const roomID = room;
       if (roomID) {
         const url = `${rootURI}/room/join`;

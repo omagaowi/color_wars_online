@@ -17,7 +17,7 @@ const Events = (socket) => {
     //  console.log(data)
     if (window.location.href.split("/")[4] == "lobby") {
       handleUserEvents(data);
-    } else {
+    } else if( window.location.href.split("/")[4] == "game" ) {
       handlePlayerDisconnect(data);
     }
   });
@@ -34,7 +34,7 @@ const Events = (socket) => {
   socket.on("ended", (msg) => {
     if (window.location.href.split("/")[4] == "lobby") {
       handleEndedLobby(msg);
-    } else {
+    } else if(window.location.href.split("/")[4] == 'game') {
       handleEnded(msg);
     }
   });
