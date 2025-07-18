@@ -2,6 +2,7 @@
     width: 100vw;
     min-height: 100vh;
     background: #406e81;
+    pointer-events: all;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -22,4 +23,8 @@
   
 .game-container.yellow{
     background: #c19647;
+  }
+
+  .game-container.inactive{
+    pointer-events: none;
   }

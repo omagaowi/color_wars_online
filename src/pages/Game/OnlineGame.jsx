@@ -104,6 +104,7 @@ const OnlineGame = () => {
   const [playTurn, setPlayTurn] = useState(0);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
+  const [inactive, setInactive] = useState(false)
   const [timer, setTimer] = useState(0);
   let time;
 
@@ -379,7 +380,9 @@ const OnlineGame = () => {
           setHasPlayed((prev) => true);
           // setPlayLoading(true)
           emitPlay(thisBox)
-            .then(() => {})
+            .then(() => {
+              setInactive(true)
+            })
             .catch((err) => {
               setHasPlayed((prev) => false);
               // setPlayLoading(false)
@@ -424,6 +427,7 @@ const OnlineGame = () => {
   // console.log(eliminated)
 
   handlePlay = (data) => {
+    setInactive(false)
     // console.log(data)
     // console.log(data.box)
     if (currentRoom && isConnected) {
@@ -791,7 +795,7 @@ const OnlineGame = () => {
       currentRoomPlayers.length > 0 && isConnected && isConnected == currentRoom.roomID? (
         <>
           <div
-            className={`game-container ${playOrder[playTurn]}`}
+            className={`game-container ${ inactive? 'inactive' : '' } ${playOrder[playTurn]}`}
             style={{ position: gameEnded ? "fixed" : "relative" }}
           >
             {/* <GameHeading color = { playOrder[playTurn] } players = { [] } timer = { timer }/> */}

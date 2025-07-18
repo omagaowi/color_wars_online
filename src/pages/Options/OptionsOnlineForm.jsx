@@ -14,9 +14,12 @@ import useFetch from "../../utils/online/useFetch.jsx";
 import CircularLoader from "../../components/CircularLoader.jsx";
 
 const OnlineForm = () => {
-  const { updateUserData, userData } = useAuthStore((state) => ({
+  const { updateUserData, userData, clientSocket, setIsConnected, currentRoom } = useAuthStore((state) => ({
     updateUserData: state.updateUserData,
+    clientSocket: state.clientSocket,
     userData: state.userData,
+    currentRoom: state.currentRoom,
+    setIsConnected: state.setIsConnected
   }));
 
   const [showRoom, setShowRoom] = useState(false);
@@ -258,6 +261,7 @@ const OnlineForm = () => {
 
     const joinRoom = (e, room) => {
       // e.preventDefault()
+      setLoading(true)
       const roomID = room;
       if (roomID) {
         const url = `${rootURI}/room/join`;
@@ -389,6 +393,15 @@ const OnlineForm = () => {
       setRoom(false);
     }
   }, [location]);
+
+  useEffect(() => {
+    if (userData && userData.playerID && currentRoom && currentRoom.roomID) {
+       clientSocket.emit("leave", {
+        roomID: currentRoom.roomID,
+      });
+    }
+    setIsConnected(false)
+  }, [])
 
   return (
     <div className="options-container online-form">

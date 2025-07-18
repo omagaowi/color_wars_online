@@ -4,8 +4,17 @@ import Header from "../../components/Header.jsx"
 import { useMenuStore, useGridStore } from "../../utils/mainStore.js"
 import { useNavigate } from "react-router-dom"
 import boxesGrid from "../../utils/boxes.js"
+import { useAuthStore } from "../../utils/online/authStore.jsx"
 
 const Options2 = () => {
+
+    const { updateUserData, userData, clientSocket, setIsConnected, currentRoom } = useAuthStore((state) => ({
+    updateUserData: state.updateUserData,
+    clientSocket: state.clientSocket,
+    userData: state.userData,
+    currentRoom: state.currentRoom,
+    setIsConnected: state.setIsConnected
+  }));
 
     const navigate = useNavigate(false)
     const { mode , setMode, playerCount, setPlayerCount} = useMenuStore((state) => ({ 
@@ -39,6 +48,15 @@ const Options2 = () => {
             console.log(err)
         })
     }, [])
+
+    useEffect(() => {
+    if (userData && userData.playerID && currentRoom && currentRoom.roomID) {
+       clientSocket.emit("leave", {
+        roomID: currentRoom.roomID,
+      });
+    }
+    setIsConnected(false)
+  }, [])
 
     return (
         <div className="options-container options2">

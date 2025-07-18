@@ -1,5 +1,7 @@
+import { useNavigate } from "react-router-dom";
 import "../styles/userLIst.css";
 import { useAuthStore } from "../utils/online/authStore";
+import { newAlert } from "./Alerts";
 
 const UserList = () => {
   const {
@@ -27,6 +29,8 @@ const UserList = () => {
     showUserList: state.showUserList,
     setShowUserList: state.setShowUserList,
   }));
+
+  const navigate = useNavigate()
   // console.log(currentRoomPlayers)
   return (
     <div className={`userlist-modal ${showUserList ? "show" : ""}`}>
